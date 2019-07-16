@@ -4,7 +4,9 @@
 #include "bmpDescriptions.h"
 #include "labyrinthWave.h"
 
-const uint8_t  myImage[] = "C:\\image\\lab_1.bmp";
+const uint8_t  myImage[] = "C:\\image\\lab_2.bmp";
+point2D startPoint = {.x = 17, .y = 22};
+point2D stopPoint  = {.x = 56, .y = 79};
 
 
 void printImageInfo(const uint8_t *imagePath)
@@ -169,9 +171,9 @@ int main(int argIn, char **argV)
     free(imageRow);
     memcpy((uint8_t*)imageBuffCopy, (uint8_t*)imageBuff, imageH * imageW * sizeof(uint32_t));
     uint32_t (*imageBuffCopyP)[imageW] = (uint32_t (*)[imageW])imageBuffCopy;
-    printImage(imageBuffCopy, imageH, imageW);
-    initWave(imageBuff, imageH, imageW, (point2D){4, 5}, (point2D){46, 34});
-    pathPoint *rootPath = findePath(imageBuff, imageH, imageW, (point2D){4, 5}, (point2D){46, 34});
+    //printImage(imageBuffCopy, imageH, imageW);
+    initWave(imageBuff, imageH, imageW, startPoint, stopPoint);
+    pathPoint *rootPath = findePath(imageBuff, imageH, imageW, startPoint, stopPoint);
     pathPoint *tempPath = rootPath;
     while(tempPath->nexPoint) {
         //printf("x = %4u, y = %4u \n", tempPath->x, tempPath->y);
