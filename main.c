@@ -116,6 +116,17 @@ void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
     }
 }
 
+void printWave(imageBuff, imageH, imageW) {
+    uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
+    for(uint32_t k = 0; k < imageH; k++) {
+        printf("|");
+        for(uint32_t i = 0; i < imageW; i++) {
+            printf("%3X|", (image[k][i] == OCCUPIED) ? (0xFFF) : (image[k][i]) );
+        }
+        printf("\n");
+    }
+}
+
 int main(int argIn, char **argV)
 {
     FILE *imageF;
@@ -127,7 +138,7 @@ int main(int argIn, char **argV)
     uint8_t *imageBuff = malloc(imageH * imageW * sizeof(uint32_t));
     memset(imageBuff, 0, imageH * imageW * sizeof(uint32_t));
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
-    uint32_t imageWithMem = (((imageW * sizeof(Color)) / 4) + 1) * 4;
+    uint32_t imageWithMem =  (((imageW * sizeof(Color)) % 4) == 0) ? (imageW) : ((((imageW * sizeof(Color)) / 4) + 1) * 4);
     uint8_t *imageRow = malloc(imageWithMem);
 
     printf("imageH = %d \n", imageH);
@@ -141,13 +152,16 @@ int main(int argIn, char **argV)
         fread(imageRow, 1, imageWithMem, imageF);
         for(uint32_t i = 0; i < imageW; i++) {
             if((color[i].r > 0) || (color[i].g < 0) || (color[i].b > 0)) {
+                image[k - 1 ][i] = FREE;
+            } else {
                 image[k - 1 ][i] = OCCUPIED;
             }
         }
     }
     free(imageRow);
     printImage(imageBuff, imageH, imageW);
-    initWave(imageBuff, imageH, imageW, (point2D){0,0}, (point2D){0,1});
+    initWave(imageBuff, imageH, imageW, (point2D){7,0}, (point2D){0,1});
+    printWave(imageBuff, imageH, imageW);
 
     return 0;
 }

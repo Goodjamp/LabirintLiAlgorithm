@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #define OCCUPIED (~((lab_t)0))
+#define FREE     ((lab_t)0)
 
 typedef uint32_t lab_t;
 
