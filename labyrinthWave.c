@@ -13,6 +13,89 @@ struct WaveS {
     } pos[WAVE_SIZE];
 };
 
+pathPoint* findePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop)
+{
+    uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
+    uint32_t nextDist = image[stop.y][stop.x] - 1;
+    pathPoint *rootPoint = (pathPoint*)malloc(sizeof(pathPoint));
+    pathPoint *tempPoint;
+    rootPoint->x = stop.x;
+    rootPoint->y = stop.y;
+    rootPoint->nexPoint = NULL;
+    tempPoint = rootPoint;
+
+    while(true) {
+        if((image[tempPoint->y - 1][tempPoint->x] == nextDist) && (tempPoint->y > 0)) {
+            tempPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
+            tempPoint->nexPoint->x = tempPoint->x;
+            tempPoint->nexPoint->y = tempPoint->y - 1;
+            tempPoint->nexPoint->nexPoint = NULL;
+            tempPoint = tempPoint->nexPoint;
+            if(tempPoint->x == start.x
+               && tempPoint->y == start.y) {
+                break;
+            }
+            nextDist--;
+            if(!nextDist) {
+                return NULL;
+            }
+            continue;
+        };
+        /**BOTTOM PIXEL**/
+        if((image[tempPoint->y + 1][tempPoint->x] == nextDist) && (tempPoint->y < (imageH - 1))) {
+            tempPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
+            tempPoint->nexPoint->x = tempPoint->x;
+            tempPoint->nexPoint->y = tempPoint->y + 1;
+            tempPoint->nexPoint->nexPoint = NULL;
+            tempPoint = tempPoint->nexPoint;
+            if(tempPoint->x == start.x
+               && tempPoint->y == start.y) {
+                break;
+            }
+            nextDist--;
+            if(!nextDist) {
+                return NULL;
+            }
+            continue;
+        };
+        /**LEFT PIXEL**/
+        if((image[tempPoint->y][tempPoint->x - 1] == nextDist) && (tempPoint->x > 0)) {
+            tempPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
+            tempPoint->nexPoint->x = tempPoint->x - 1;
+            tempPoint->nexPoint->y = tempPoint->y;
+            tempPoint->nexPoint->nexPoint = NULL;
+            tempPoint = tempPoint->nexPoint;
+            if(tempPoint->x == start.x
+               && tempPoint->y == start.y) {
+                break;
+            }
+            nextDist--;
+            if(!nextDist) {
+                return NULL;
+            }
+            continue;
+        };
+        /**RIGHT PIXEL**/
+        if((image[tempPoint->y][tempPoint->x + 1] == nextDist) && (tempPoint->x < (imageW - 1))) {
+            tempPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
+            tempPoint->nexPoint->x = tempPoint->x + 1;
+            tempPoint->nexPoint->y = tempPoint->y;
+            tempPoint->nexPoint->nexPoint = NULL;
+            tempPoint = tempPoint->nexPoint;
+            if(tempPoint->x == start.x
+               && tempPoint->y == start.y) {
+                break;
+            }
+            nextDist--;
+            if(!nextDist) {
+                return NULL;
+            }
+            continue;
+        };
+    }
+    return rootPoint;
+}
+
 bool initWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop)
 {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;

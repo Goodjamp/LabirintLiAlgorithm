@@ -110,13 +110,20 @@ void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     for(uint32_t k = 0; k < imageH; k++) {
         for(uint32_t i = 0; i < imageW; i++) {
-            printf("%s", (image[k][i]) ? ("#") : (" "));
+            if(image[k][i] == 0xFFFFFFFF) {
+                printf("%s", "#");
+            } else if (image[k][i] == '.') {
+                printf("%s", ".");
+            } else {
+                printf("%s", " ");
+            }
+            //printf("%s", (image[k][i]) ? ("#") : (" "));
         }
         printf("\n");
     }
 }
 
-void printWave(imageBuff, imageH, imageW) {
+void printWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW) {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     for(uint32_t k = 0; k < imageH; k++) {
         printf("|");
@@ -135,7 +142,8 @@ int main(int argIn, char **argV)
     uint32_t imageH = getImageHeight(imagePath);
     uint32_t imageW = getImageWidth(imagePath);
     uint32_t imageOfset = getImageOfset(imagePath);
-    uint8_t *imageBuff = malloc(imageH * imageW * sizeof(uint32_t));
+    uint32_t *imageBuff = (uint32_t*)malloc(imageH * imageW * sizeof(uint32_t));
+    uint32_t *imageBuffCopy = (uint32_t*)malloc(imageH * imageW * sizeof(uint32_t));
     memset(imageBuff, 0, imageH * imageW * sizeof(uint32_t));
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     uint32_t imageWithMem =  (((imageW * sizeof(Color)) % 4) == 0) ? (imageW) : ((((imageW * sizeof(Color)) / 4) + 1) * 4);
@@ -159,9 +167,19 @@ int main(int argIn, char **argV)
         }
     }
     free(imageRow);
-    printImage(imageBuff, imageH, imageW);
-    initWave(imageBuff, imageH, imageW, (point2D){7,0}, (point2D){0,1});
-    printWave(imageBuff, imageH, imageW);
+    memcpy((uint8_t*)imageBuffCopy, (uint8_t*)imageBuff, imageH * imageW * sizeof(uint32_t));
+    uint32_t (*imageBuffCopyP)[imageW] = (uint32_t (*)[imageW])imageBuffCopy;
+    printImage(imageBuffCopy, imageH, imageW);
+    initWave(imageBuff, imageH, imageW, (point2D){4, 5}, (point2D){46, 34});
+    pathPoint *rootPath = findePath(imageBuff, imageH, imageW, (point2D){4, 5}, (point2D){46, 34});
+    pathPoint *tempPath = rootPath;
+    while(tempPath->nexPoint) {
+        //printf("x = %4u, y = %4u \n", tempPath->x, tempPath->y);
+        imageBuffCopyP[tempPath->y][tempPath->x] = '.';
+        tempPath = tempPath->nexPoint;
+    }
+    printImage(imageBuffCopy, imageH, imageW);
+    //printWave(imageBuff, imageH, imageW);
 
     return 0;
 }
