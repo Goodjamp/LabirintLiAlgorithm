@@ -13,10 +13,19 @@ struct WaveS {
     } pos[WAVE_SIZE];
 };
 
+pathPoint* addPathPoint(pathPoint* currentPoint, uint32_t x, uint32_t y)
+{
+    currentPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
+    currentPoint->nexPoint->x = x;
+    currentPoint->nexPoint->y = y;
+    currentPoint->nexPoint->nexPoint = NULL;
+    return currentPoint->nexPoint;
+}
+
 pathPoint* findePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop)
 {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
-    uint32_t nextDist = image[stop.y][stop.x] - 1;
+    uint32_t nextDist = image[stop.y][stop.x];
     pathPoint *rootPoint = (pathPoint*)malloc(sizeof(pathPoint));
     pathPoint *tempPoint;
     rootPoint->x = stop.x;
@@ -25,71 +34,31 @@ pathPoint* findePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, poin
     tempPoint = rootPoint;
 
     while(true) {
+        if(tempPoint->x == start.x
+           && tempPoint->y == start.y) {
+            break;
+        }
+        nextDist--;
+        if(!nextDist) {
+            return NULL;
+        }
         if((image[tempPoint->y - 1][tempPoint->x] == nextDist) && (tempPoint->y > 0)) {
-            tempPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
-            tempPoint->nexPoint->x = tempPoint->x;
-            tempPoint->nexPoint->y = tempPoint->y - 1;
-            tempPoint->nexPoint->nexPoint = NULL;
-            tempPoint = tempPoint->nexPoint;
-            if(tempPoint->x == start.x
-               && tempPoint->y == start.y) {
-                break;
-            }
-            nextDist--;
-            if(!nextDist) {
-                return NULL;
-            }
+            tempPoint = addPathPoint(tempPoint, tempPoint->x, tempPoint->y - 1);
             continue;
         };
         /**BOTTOM PIXEL**/
         if((image[tempPoint->y + 1][tempPoint->x] == nextDist) && (tempPoint->y < (imageH - 1))) {
-            tempPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
-            tempPoint->nexPoint->x = tempPoint->x;
-            tempPoint->nexPoint->y = tempPoint->y + 1;
-            tempPoint->nexPoint->nexPoint = NULL;
-            tempPoint = tempPoint->nexPoint;
-            if(tempPoint->x == start.x
-               && tempPoint->y == start.y) {
-                break;
-            }
-            nextDist--;
-            if(!nextDist) {
-                return NULL;
-            }
+            tempPoint = addPathPoint(tempPoint, tempPoint->x, tempPoint->y + 1);
             continue;
         };
         /**LEFT PIXEL**/
         if((image[tempPoint->y][tempPoint->x - 1] == nextDist) && (tempPoint->x > 0)) {
-            tempPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
-            tempPoint->nexPoint->x = tempPoint->x - 1;
-            tempPoint->nexPoint->y = tempPoint->y;
-            tempPoint->nexPoint->nexPoint = NULL;
-            tempPoint = tempPoint->nexPoint;
-            if(tempPoint->x == start.x
-               && tempPoint->y == start.y) {
-                break;
-            }
-            nextDist--;
-            if(!nextDist) {
-                return NULL;
-            }
+            tempPoint = addPathPoint(tempPoint, tempPoint->x - 1, tempPoint->y);
             continue;
         };
         /**RIGHT PIXEL**/
         if((image[tempPoint->y][tempPoint->x + 1] == nextDist) && (tempPoint->x < (imageW - 1))) {
-            tempPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
-            tempPoint->nexPoint->x = tempPoint->x + 1;
-            tempPoint->nexPoint->y = tempPoint->y;
-            tempPoint->nexPoint->nexPoint = NULL;
-            tempPoint = tempPoint->nexPoint;
-            if(tempPoint->x == start.x
-               && tempPoint->y == start.y) {
-                break;
-            }
-            nextDist--;
-            if(!nextDist) {
-                return NULL;
-            }
+            tempPoint = addPathPoint(tempPoint, tempPoint->x + 1, tempPoint->y);
             continue;
         };
     }

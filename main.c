@@ -4,9 +4,9 @@
 #include "bmpDescriptions.h"
 #include "labyrinthWave.h"
 
-const uint8_t  myImage[] = "C:\\image\\lab_2.bmp";
-point2D startPoint = {.x = 17, .y = 22};
-point2D stopPoint  = {.x = 56, .y = 79};
+const uint8_t  myImage[] = "C:\\image\\lab_1.bmp";
+point2D startPoint = {.x = 5,  .y = 5};
+point2D stopPoint  = {.x = 47, .y = 34};
 
 
 void printImageInfo(const uint8_t *imagePath)
