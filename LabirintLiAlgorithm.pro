@@ -5,8 +5,10 @@ CONFIG -= qt
 
 SOURCES += \
         main.c \
-        labyrinthWave.c
+        labyrinthWave.c \
+        optimaizeImage.c
 
 HEADERS += \
         bmpDescriptions.h \
-        labyrinthWave.h
+        labyrinthWave.h \
+        optimaizeImage.h

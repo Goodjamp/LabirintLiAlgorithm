@@ -3,10 +3,18 @@
 
 #include "bmpDescriptions.h"
 #include "labyrinthWave.h"
+#include "optimaizeImage.h"
+/*
+const uint8_t  myImage[] = "C:\\image\\lab_2.bmp";
+point2D startPoint = {.x = 12,  .y = 12};
+point2D stopPoint  = {.x = 0, .y = 105};
+*/
 
-const uint8_t  myImage[] = "C:\\image\\lab_1.bmp";
-point2D startPoint = {.x = 5,  .y = 5};
-point2D stopPoint  = {.x = 47, .y = 34};
+const uint8_t  myImage[] = "C:\\image\\lab_4.bmp";
+point2D startPoint = {.x = 2,  .y = 3};
+point2D stopPoint  = {.x = 95, .y = 95};
+
+
 
 
 void printImageInfo(const uint8_t *imagePath)
@@ -109,8 +117,14 @@ void imageAddWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, uint32_
 
 void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
 {
+    printf("PRINT IMAGE \n");
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
+    printf(" ");
+    for(uint32_t k = 0; k < imageW; k++){
+       // printf("%u",k);
+    }
     for(uint32_t k = 0; k < imageH; k++) {
+        //printf("%u",k);
         for(uint32_t i = 0; i < imageW; i++) {
             if(image[k][i] == 0xFFFFFFFF) {
                 printf("%s", "#");
@@ -161,7 +175,7 @@ int main(int argIn, char **argV)
         Color *color = (Color*)imageRow;
         fread(imageRow, 1, imageWithMem, imageF);
         for(uint32_t i = 0; i < imageW; i++) {
-            if((color[i].r > 0) || (color[i].g < 0) || (color[i].b > 0)) {
+            if((color[i].r > 0) || (color[i].g > 0) || (color[i].b > 0)) {
                 image[k - 1 ][i] = FREE;
             } else {
                 image[k - 1 ][i] = OCCUPIED;
@@ -169,18 +183,26 @@ int main(int argIn, char **argV)
         }
     }
     free(imageRow);
-    memcpy((uint8_t*)imageBuffCopy, (uint8_t*)imageBuff, imageH * imageW * sizeof(uint32_t));
+    memcpy((uint8_t*)imageBuffCopy, (uint8_t*)image, imageH * imageW * sizeof(uint32_t));
+    printImage(imageBuffCopy, imageH, imageW);
+    optimazeImage(imageBuffCopy,imageH, imageW );
+
+
+
+    printImage(imageBuffCopy, imageH, imageW);
+    //return 0;
+
+
+
     uint32_t (*imageBuffCopyP)[imageW] = (uint32_t (*)[imageW])imageBuffCopy;
-    //printImage(imageBuffCopy, imageH, imageW);
-    initWave(imageBuff, imageH, imageW, startPoint, stopPoint);
-    pathPoint *rootPath = findePath(imageBuff, imageH, imageW, startPoint, stopPoint);
+    initWave(imageBuffCopy, imageH, imageW, startPoint, stopPoint);
+    pathPoint *rootPath = findePath(imageBuffCopy, imageH, imageW, startPoint, stopPoint);
     pathPoint *tempPath = rootPath;
     while(tempPath->nexPoint) {
-        //printf("x = %4u, y = %4u \n", tempPath->x, tempPath->y);
-        imageBuffCopyP[tempPath->y][tempPath->x] = '.';
+        image[tempPath->y][tempPath->x] = '.';
         tempPath = tempPath->nexPoint;
     }
-    printImage(imageBuffCopy, imageH, imageW);
+    printImage(image, imageH, imageW);
     //printWave(imageBuff, imageH, imageW);
 
     return 0;
