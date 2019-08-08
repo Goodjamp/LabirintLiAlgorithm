@@ -2,13 +2,11 @@
 #include <stdint.h>
 
 #include "bmpDescriptions.h"
-#include "labyrinthWave.h"
-#include "optimaizeImage.h"
-
+#include "labyrinthProcessing.h"
 
 const uint8_t  myImage[] = "C:\\image\\lab_5.bmp";
 point2D startPoint = {.x = 2,  .y = 3};
-point2D stopPoint  = {.x = 497, .y = 3};
+point2D stopPoint  = {.x = 3, .y = 497};
 /*
 const uint8_t  myImage[] = "C:\\image\\lab_2.bmp";
 point2D startPoint = {.x = 12,  .y = 12};
