@@ -1,6 +1,8 @@
 #include "stdint.h"
 #include "stdbool.h"
 
+#include "optimaizeImage.h"
+
 void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
 {
     uint32_t (*image)[width] = (uint8_t (*)[])imageBuff;
@@ -47,7 +49,7 @@ void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
                    image[currentList[k].y - 2][currentList[k].x - 1] == 0 &&
                    image[currentList[k].y - 2][currentList[k].x] == 0 &&
                    image[currentList[k].y - 2][currentList[k].x + 1] == 0) {
-                    image[currentList[k].y - 1][currentList[k].x] = 0xFFFFFFFF;
+                    image[currentList[k].y - 1][currentList[k].x] = OPTIMAIZ_OCCUPIED;
                     newList[tempCnt].x = currentList[k].x;
                     newList[tempCnt].y = currentList[k].y - 1;
                     tempCnt++;
@@ -60,7 +62,7 @@ void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
                    image[currentList[k].y + 2][currentList[k].x - 1] == 0 &&
                    image[currentList[k].y + 2][currentList[k].x] == 0 &&
                    image[currentList[k].y + 2][currentList[k].x + 1] == 0) {
-                    image[currentList[k].y + 1][currentList[k].x] = 0xFFFFFFFF;
+                    image[currentList[k].y + 1][currentList[k].x] = OPTIMAIZ_OCCUPIED;
                     newList[tempCnt].x = currentList[k].x;
                     newList[tempCnt].y = currentList[k].y + 1;
                     tempCnt++;
@@ -74,7 +76,7 @@ void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
                    image[currentList[k].y - 1][currentList[k].x - 2] == 0 &&
                    image[currentList[k].y][currentList[k].x - 2] == 0 &&
                    image[currentList[k].y + 1][currentList[k].x - 2] == 0) {
-                    image[currentList[k].y][currentList[k].x - 1] = 0xFFFFFFFF;
+                    image[currentList[k].y][currentList[k].x - 1] = OPTIMAIZ_OCCUPIED;
                     newList[tempCnt].x = currentList[k].x - 1;
                     newList[tempCnt].y = currentList[k].y;
                     tempCnt++;
@@ -88,7 +90,7 @@ void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
                    image[currentList[k].y - 1][currentList[k].x + 2] == 0 &&
                    image[currentList[k].y][currentList[k].x + 2] == 0 &&
                    image[currentList[k].y + 1][currentList[k].x + 2] == 0) {
-                    image[currentList[k].y][currentList[k].x + 1] = 0xFFFFFFFF;
+                    image[currentList[k].y][currentList[k].x + 1] = OPTIMAIZ_OCCUPIED;
                     newList[tempCnt].x = currentList[k].x + 1;
                     newList[tempCnt].y = currentList[k].y;
                     tempCnt++;

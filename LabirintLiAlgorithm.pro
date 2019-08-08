@@ -4,11 +4,9 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
-        main.c \
-        labyrinthWave.c \
-        optimaizeImage.c
+    labyrinthProcessing.c \
+    main.c
 
 HEADERS += \
         bmpDescriptions.h \
-        labyrinthWave.h \
-        optimaizeImage.h
+        labyrinthProcessing.h

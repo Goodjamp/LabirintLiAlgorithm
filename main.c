@@ -4,18 +4,24 @@
 #include "bmpDescriptions.h"
 #include "labyrinthWave.h"
 #include "optimaizeImage.h"
+
+
+const uint8_t  myImage[] = "C:\\image\\lab_5.bmp";
+point2D startPoint = {.x = 2,  .y = 3};
+point2D stopPoint  = {.x = 497, .y = 3};
 /*
 const uint8_t  myImage[] = "C:\\image\\lab_2.bmp";
 point2D startPoint = {.x = 12,  .y = 12};
 point2D stopPoint  = {.x = 0, .y = 105};
-*/
 
 const uint8_t  myImage[] = "C:\\image\\lab_4.bmp";
 point2D startPoint = {.x = 2,  .y = 3};
 point2D stopPoint  = {.x = 95, .y = 95};
 
-
-
+const uint8_t  myImage[] = "C:\\image\\lab_3.bmp";
+point2D startPoint = {.x = 0,  .y = 0};
+point2D stopPoint  = {.x = 12, .y = 12};
+*/
 
 void printImageInfo(const uint8_t *imagePath)
 {
@@ -110,9 +116,55 @@ uint32_t getImageOfset(uint8_t *imagePath)
     return bmpHeadr.file.bmpHeadr.dataOfset;
 }
 
-void imageAddWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, uint32_t *waveBuff)
+uint32_t fileSize(uint8_t *imagePath)
 {
+    FILE  *file;
+    file = fopen(imagePath, "rb");
+    if(!file) {
+        printf("Cna't open file\n");
+        return 0;
+    }
+    fseek(file, 0, SEEK_END);
+    uint32_t fileSize = ftell(file);
+    fclose(file);
+    return fileSize;
+}
 
+void addTrackToImage(uint8_t *imagePath, pathPoint *rootPath)
+{
+    FILE *file;
+    uint32_t imageFileSize = fileSize(imagePath);
+    if(!imageFileSize) {
+        printf("Cant Read file\n");
+        return;
+    }
+    uint32_t imageH = getImageHeight(imagePath);
+    uint32_t imageW = getImageWidth(imagePath);
+    uint32_t imageOfset = getImageOfset(imagePath);
+    uint8_t *imageBuff = (uint8_t*)malloc(imageFileSize);
+    uint32_t imageWithMem =  (((imageW * sizeof(Color)) % 4) == 0) ? (imageW) : ((((imageW * sizeof(Color)) / 4) + 1) * 4);
+    uint8_t (*image)[imageWithMem] = (uint8_t (*)[imageWithMem])(imageBuff + imageOfset);
+    if(!(file = fopen(imagePath,"rb")))
+    {
+        printf("Can't open image file\n");
+        return;
+    }
+    fread(imageBuff, 1, imageFileSize, file);
+    fclose(file);
+    while(rootPath){
+        Color *rawImage = (Color*)image[imageH - rootPath->y];
+        rawImage[rootPath->x].r = 0xFF;
+        rawImage[rootPath->x].g = 0x0;
+        rawImage[rootPath->x].b = 0x0;
+        rootPath = rootPath->nexPoint;
+    }
+    if(!(file = fopen("C:\\image\\test.bmp","w")))
+    {
+        printf("Can't open test.bmp file\n");
+        return;
+    }
+    fwrite(imageBuff, 1, imageFileSize, file);
+    fclose(file);
 }
 
 void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
@@ -120,20 +172,17 @@ void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
     printf("PRINT IMAGE \n");
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     printf(" ");
-    for(uint32_t k = 0; k < imageW; k++){
-       // printf("%u",k);
-    }
     for(uint32_t k = 0; k < imageH; k++) {
-        //printf("%u",k);
         for(uint32_t i = 0; i < imageW; i++) {
             if(image[k][i] == 0xFFFFFFFF) {
                 printf("%s", "#");
+            } else if (image[k][i] == 0xEEEEEEEE) {
+                printf("%s", ".");
             } else if (image[k][i] == '.') {
                 printf("%s", ".");
             } else {
                 printf("%s", " ");
             }
-            //printf("%s", (image[k][i]) ? ("#") : (" "));
         }
         printf("\n");
     }
@@ -171,7 +220,7 @@ int main(int argIn, char **argV)
 
     imageF = fopen(imagePath, "rb+");
     fseek(imageF, imageOfset, SEEK_SET);
-    for(uint8_t k = imageH; k > 0; k--) {
+    for(uint32_t k = imageH; k > 0; k--) {
         Color *color = (Color*)imageRow;
         fread(imageRow, 1, imageWithMem, imageF);
         for(uint32_t i = 0; i < imageW; i++) {
@@ -184,12 +233,12 @@ int main(int argIn, char **argV)
     }
     free(imageRow);
     memcpy((uint8_t*)imageBuffCopy, (uint8_t*)image, imageH * imageW * sizeof(uint32_t));
-    printImage(imageBuffCopy, imageH, imageW);
+    //printImage(imageBuffCopy, imageH, imageW);
     optimazeImage(imageBuffCopy,imageH, imageW );
 
 
 
-    printImage(imageBuffCopy, imageH, imageW);
+    //printImage(imageBuffCopy, imageH, imageW);
     //return 0;
 
 
@@ -202,8 +251,10 @@ int main(int argIn, char **argV)
         image[tempPath->y][tempPath->x] = '.';
         tempPath = tempPath->nexPoint;
     }
-    printImage(image, imageH, imageW);
+    addTrackToImage(imagePath, rootPath);
+    //printImage(image, imageH, imageW);
     //printWave(imageBuff, imageH, imageW);
 
     return 0;
 }
+
