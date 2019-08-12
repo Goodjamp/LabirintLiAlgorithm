@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "labyrinthProcessing.h"
 
@@ -14,7 +16,7 @@ struct WaveS {
     } pos[WAVE_SIZE];
 };
 
-static pathPoint* addPathPoint(pathPoint* currentPoint, uint32_t x, uint32_t y)
+static inline pathPoint* addPathPoint(pathPoint* currentPoint, uint32_t x, uint32_t y)
 {
     currentPoint->nexPoint = (pathPoint*)malloc(sizeof(pathPoint));
     currentPoint->nexPoint->x = x;
@@ -22,12 +24,120 @@ static pathPoint* addPathPoint(pathPoint* currentPoint, uint32_t x, uint32_t y)
     currentPoint->nexPoint->nexPoint = NULL;
     return currentPoint->nexPoint;
 }
-/*
-bool addPathToTrak(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop)
-{
 
+void freePath(pathPoint* path){
+    pathPoint* pathTemp;
+    while(path) {
+        pathTemp = path->nexPoint;
+        free(path);
+        path = pathTemp;
+    }
 }
-*/
+
+bool addPathToTrack(uint32_t *imageBuff,
+                   uint32_t imageH,
+                   uint32_t imageW,
+                   point2D position)
+{
+    uint32_t *copyImage = (uint32_t*)malloc(imageH * imageW * sizeof(uint32_t));
+    memcpy((uint8_t*)copyImage, (uint8_t*)imageBuff, imageH * imageW * sizeof(uint32_t));
+    uint32_t (*image)[imageW] = (uint32_t (*)[imageW])copyImage;
+    uint32_t (*imageBuffP)[imageW] = (uint32_t (*)[imageW])imageBuff;
+    struct WaveS wave, waveTemp;
+    image[position.y][position.x] = 1;
+    wave.cnt = 1;
+    wave.pos[0].x = position.x;
+    wave.pos[0].y = position.y;
+    uint32_t rezX = 0,
+             rezY = 0;
+    bool isContinue = true;
+    while(true) {
+        waveTemp.cnt = 0;
+        for(uint32_t k = 0; k < wave.cnt; k++) {
+            uint32_t newVal = image[wave.pos[k].y][wave.pos[k].x] + 1;
+            /**UP PIXEL**/
+            if(wave.pos[k].y > 0) {
+                if(image[wave.pos[k].y - 1][wave.pos[k].x] == OPTIMIZE_OCCUPIED) {
+                image[wave.pos[k].y - 1][wave.pos[k].x] = newVal;
+                waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y - 1;
+                waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x;
+                waveTemp.cnt++;
+                } else if (image[wave.pos[k].y - 1][wave.pos[k].x] == FREE){
+                    rezX = wave.pos[k].x;
+                    rezY = wave.pos[k].y;
+                    isContinue = false;
+                    break;
+                };
+            };
+            /**DOWN PIXEL**/
+            if (wave.pos[k].y < (imageH - 1)){
+                if(image[wave.pos[k].y + 1][wave.pos[k].x] == OPTIMIZE_OCCUPIED){
+                    image[wave.pos[k].y + 1][wave.pos[k].x] = newVal;
+                    waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y + 1;
+                    waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x;
+                    waveTemp.cnt++;
+                } else if(image[wave.pos[k].y + 1][wave.pos[k].x] == FREE) {
+                    rezX = wave.pos[k].x;
+                    rezY = wave.pos[k].y;
+                    isContinue = false;
+                    break;
+                }
+            }
+            /**LEFT PIXEL**/
+            if(wave.pos[k].x > 0) {
+                if(image[wave.pos[k].y][wave.pos[k].x - 1] == OPTIMIZE_OCCUPIED) {
+                    image[wave.pos[k].y][wave.pos[k].x - 1] = newVal;
+                    waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y;
+                    waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x - 1;
+                    waveTemp.cnt++;
+                } else if(image[wave.pos[k].y][wave.pos[k].x - 1] == FREE) {
+                    rezX = wave.pos[k].x;
+                    rezY = wave.pos[k].y;
+                    isContinue = false;
+                    break;
+                }
+            }
+            /**RIGHT PIXEL**/
+            if(wave.pos[k].x < (imageW - 1)) {
+                if(image[wave.pos[k].y][wave.pos[k].x + 1] == OPTIMIZE_OCCUPIED) {
+                    image[wave.pos[k].y][wave.pos[k].x + 1] = newVal;
+                    waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y;
+                    waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x + 1;
+                    waveTemp.cnt++;
+                } else if(image[wave.pos[k].y][wave.pos[k].x + 1] == FREE) {
+                    rezX = wave.pos[k].x;
+                    rezY = wave.pos[k].y;
+                    isContinue = false;
+                    break;
+
+                }
+            }
+        }
+        if(waveTemp.cnt > 0 && isContinue){
+            wave = waveTemp;
+        } else if (waveTemp.cnt == 0 && isContinue) {
+             free(copyImage);
+             return false;
+        } else {
+            break;
+        }
+    }
+    printf("Wave = %u\n", image[rezY][rezX]);
+    pathPoint* path = findePath(copyImage,
+                                imageH,
+                                imageW,
+                                position,
+                                (point2D){.x = rezX, rezY});
+    pathPoint* pathTemp = path;
+    /*Set path to start point*/
+    while(pathTemp) {
+        imageBuffP[pathTemp->y][pathTemp->x] = 0;
+        pathTemp = pathTemp->nexPoint;
+    }
+    free(copyImage);
+    freePath(pathTemp);
+    return true;
+}
 
 pathPoint* findePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop)
 {
@@ -101,14 +211,14 @@ bool initWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D sta
             };
             /**LEFT PIXEL**/
             if((image[wave.pos[k].y][wave.pos[k].x - 1] == 0)&& (wave.pos[k].x > 0)) {
-                image[wave.pos[k].y ][wave.pos[k].x - 1] = newVal;
+                image[wave.pos[k].y][wave.pos[k].x - 1] = newVal;
                 waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y;
                 waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x - 1;
                 waveTemp.cnt++;
             };
             /**RIGHT PIXEL**/
             if((image[wave.pos[k].y][wave.pos[k].x + 1] == 0) && (wave.pos[k].x < (imageW - 1))) {
-                image[wave.pos[k].y ][wave.pos[k].x + 1] = newVal;
+                image[wave.pos[k].y][wave.pos[k].x + 1] = newVal;
                 waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y;
                 waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x + 1;
                 waveTemp.cnt++;
@@ -124,7 +234,7 @@ bool initWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D sta
 
 void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
 {
-    uint32_t (*image)[width] = (uint8_t (*)[])imageBuff;
+    uint32_t (*image)[width] = (uint32_t (*)[])imageBuff;
     uint16_t imageSize = height * width;
     struct {
         uint32_t x;
@@ -168,7 +278,7 @@ void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
                    image[currentList[k].y - 2][currentList[k].x - 1] == 0 &&
                    image[currentList[k].y - 2][currentList[k].x] == 0 &&
                    image[currentList[k].y - 2][currentList[k].x + 1] == 0) {
-                    image[currentList[k].y - 1][currentList[k].x] = OPTIMAIZ_OCCUPIED;
+                    image[currentList[k].y - 1][currentList[k].x] = OPTIMIZE_OCCUPIED;
                     newList[tempCnt].x = currentList[k].x;
                     newList[tempCnt].y = currentList[k].y - 1;
                     tempCnt++;
@@ -181,7 +291,7 @@ void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
                    image[currentList[k].y + 2][currentList[k].x - 1] == 0 &&
                    image[currentList[k].y + 2][currentList[k].x] == 0 &&
                    image[currentList[k].y + 2][currentList[k].x + 1] == 0) {
-                    image[currentList[k].y + 1][currentList[k].x] = OPTIMAIZ_OCCUPIED;
+                    image[currentList[k].y + 1][currentList[k].x] = OPTIMIZE_OCCUPIED;
                     newList[tempCnt].x = currentList[k].x;
                     newList[tempCnt].y = currentList[k].y + 1;
                     tempCnt++;
@@ -195,7 +305,7 @@ void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
                    image[currentList[k].y - 1][currentList[k].x - 2] == 0 &&
                    image[currentList[k].y][currentList[k].x - 2] == 0 &&
                    image[currentList[k].y + 1][currentList[k].x - 2] == 0) {
-                    image[currentList[k].y][currentList[k].x - 1] = OPTIMAIZ_OCCUPIED;
+                    image[currentList[k].y][currentList[k].x - 1] = OPTIMIZE_OCCUPIED;
                     newList[tempCnt].x = currentList[k].x - 1;
                     newList[tempCnt].y = currentList[k].y;
                     tempCnt++;
@@ -209,7 +319,7 @@ void optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
                    image[currentList[k].y - 1][currentList[k].x + 2] == 0 &&
                    image[currentList[k].y][currentList[k].x + 2] == 0 &&
                    image[currentList[k].y + 1][currentList[k].x + 2] == 0) {
-                    image[currentList[k].y][currentList[k].x + 1] = OPTIMAIZ_OCCUPIED;
+                    image[currentList[k].y][currentList[k].x + 1] = OPTIMIZE_OCCUPIED;
                     newList[tempCnt].x = currentList[k].x + 1;
                     newList[tempCnt].y = currentList[k].y;
                     tempCnt++;

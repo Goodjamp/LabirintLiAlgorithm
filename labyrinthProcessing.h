@@ -5,7 +5,7 @@
 
 #define OCCUPIED (~((lab_t)0))
 #define FREE     ((lab_t)0)
-#define OPTIMAIZ_OCCUPIED 0XEEEEEEEE
+#define OPTIMIZE_OCCUPIED 0XEEEEEEEE
 
 typedef uint32_t lab_t;
 
@@ -23,5 +23,6 @@ typedef struct pathPoint{
 bool       initWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop);
 pathPoint* findePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop);
 void       optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width);
+bool       addPathToTrack(uint32_t *imageBuff,  uint32_t imageH,  uint32_t imageW, point2D position);
 
 #endif

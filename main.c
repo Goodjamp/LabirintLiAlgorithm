@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
 
 #include "bmpDescriptions.h"
 #include "labyrinthProcessing.h"
 
 const uint8_t  myImage[] = "C:\\image\\lab_5.bmp";
-point2D startPoint = {.x = 2,  .y = 3};
+point2D startPoint = {.x = 422,  .y = 91};
 point2D stopPoint  = {.x = 3, .y = 497};
 /*
 const uint8_t  myImage[] = "C:\\image\\lab_2.bmp";
@@ -17,10 +20,9 @@ point2D startPoint = {.x = 2,  .y = 3};
 point2D stopPoint  = {.x = 95, .y = 95};
 
 const uint8_t  myImage[] = "C:\\image\\lab_3.bmp";
-point2D startPoint = {.x = 0,  .y = 0};
+point2D startPoint = {.x = 0,  .y = 5};
 point2D stopPoint  = {.x = 12, .y = 12};
 */
-
 void printImageInfo(const uint8_t *imagePath)
 {
     union {
@@ -45,7 +47,7 @@ void printImageInfo(const uint8_t *imagePath)
     fclose(myImage);
 }
 
-uint32_t getImageSize(uint8_t *imagePath)
+uint32_t getImageSize(const uint8_t *imagePath)
 {
     union {
         BmpS file;
@@ -63,7 +65,7 @@ uint32_t getImageSize(uint8_t *imagePath)
            * bmpHeadr.file.bmpInfoHeadr.height;
 }
 
-uint32_t getImageHeight(uint8_t *imagePath)
+uint32_t getImageHeight(const uint8_t *imagePath)
 {
     union {
         BmpS file;
@@ -80,7 +82,7 @@ uint32_t getImageHeight(uint8_t *imagePath)
     return bmpHeadr.file.bmpInfoHeadr.height;
 }
 
-uint32_t getImageWidth(uint8_t *imagePath)
+uint32_t getImageWidth(const uint8_t *imagePath)
 {
     union {
         BmpS file;
@@ -97,7 +99,7 @@ uint32_t getImageWidth(uint8_t *imagePath)
     return bmpHeadr.file.bmpInfoHeadr.width;
 }
 
-uint32_t getImageOfset(uint8_t *imagePath)
+uint32_t getImageOfset(const uint8_t *imagePath)
 {
     union {
         BmpS file;
@@ -114,7 +116,7 @@ uint32_t getImageOfset(uint8_t *imagePath)
     return bmpHeadr.file.bmpHeadr.dataOfset;
 }
 
-uint32_t fileSize(uint8_t *imagePath)
+uint32_t fileSize(const uint8_t *imagePath)
 {
     FILE  *file;
     file = fopen(imagePath, "rb");
@@ -128,9 +130,10 @@ uint32_t fileSize(uint8_t *imagePath)
     return fileSize;
 }
 
-void addTrackToImage(uint8_t *imagePath, pathPoint *rootPath)
+void addTrackToImage(const uint8_t *imagePath, pathPoint *rootPath)
 {
     FILE *file;
+    const uint8_t nameExtension[] = "_test1846.bmp";
     uint32_t imageFileSize = fileSize(imagePath);
     if(!imageFileSize) {
         printf("Cant Read file\n");
@@ -156,13 +159,21 @@ void addTrackToImage(uint8_t *imagePath, pathPoint *rootPath)
         rawImage[rootPath->x].b = 0x0;
         rootPath = rootPath->nexPoint;
     }
-    if(!(file = fopen("C:\\image\\test.bmp","w")))
+    uint8_t *pathName = malloc(strlen(imagePath) + strlen(nameExtension) - 3 + 1);
+    memcpy(pathName, imagePath, strlen(imagePath) + 1);
+    memcpy(&pathName[strlen(imagePath) - 4], nameExtension, strlen(nameExtension) + 1);
+    printf("track file name: %s\n", pathName);
+    if(!(file = fopen(pathName,"w")))
     {
         printf("Can't open test.bmp file\n");
+        free(pathName);
+        free(imageBuff);
         return;
     }
     fwrite(imageBuff, 1, imageFileSize, file);
     fclose(file);
+    free(pathName);
+    free(imageBuff);
 }
 
 void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
@@ -197,11 +208,27 @@ void printWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW) {
     }
 }
 
+bool isFileExist(const uint8_t *imagePath)
+{
+    FILE *myImage;
+    myImage = fopen(imagePath, "rb");
+    if(!myImage) {
+        printf("ERROR, can't open file");
+        return false;
+    }
+    fclose(myImage);
+    return true;
+}
+
 int main(int argIn, char **argV)
 {
     FILE *imageF;
-    const uint8_t *imagePath = myImage;
-   // printImageInfo(imagePath);
+    const uint8_t *imagePath = myImage;//argV[1];
+    //printImageInfo(imagePath);
+    printf("image path: %s \n", imagePath);
+    if(!isFileExist(imagePath)) {
+        return 0;
+    }
     uint32_t imageH = getImageHeight(imagePath);
     uint32_t imageW = getImageWidth(imagePath);
     uint32_t imageOfset = getImageOfset(imagePath);
@@ -215,7 +242,10 @@ int main(int argIn, char **argV)
     printf("imageH = %d \n", imageH);
     printf("imageW = %d \n", imageW);
     printf("imageOfset = %d \n", imageOfset);
-
+    /*Read image*/
+    clock_t currentTime = clock();
+    printf("CLOCKS_PER_SEC =  %u\n", CLOCKS_PER_SEC);
+    printf("Start prog time =  %u\n", currentTime);
     imageF = fopen(imagePath, "rb+");
     fseek(imageF, imageOfset, SEEK_SET);
     for(uint32_t k = imageH; k > 0; k--) {
@@ -233,26 +263,27 @@ int main(int argIn, char **argV)
     memcpy((uint8_t*)imageBuffCopy, (uint8_t*)image, imageH * imageW * sizeof(uint32_t));
     //printImage(imageBuffCopy, imageH, imageW);
     optimazeImage(imageBuffCopy,imageH, imageW );
-
+    //printImage(imageBuffCopy, imageH, imageW);
+    addPathToTrack(imageBuffCopy, imageH, imageW, startPoint);
 
 
     //printImage(imageBuffCopy, imageH, imageW);
-    //return 0;
-
-
-
     uint32_t (*imageBuffCopyP)[imageW] = (uint32_t (*)[imageW])imageBuffCopy;
     initWave(imageBuffCopy, imageH, imageW, startPoint, stopPoint);
     pathPoint *rootPath = findePath(imageBuffCopy, imageH, imageW, startPoint, stopPoint);
     pathPoint *tempPath = rootPath;
+    /*Add track to image*/
     while(tempPath->nexPoint) {
         image[tempPath->y][tempPath->x] = '.';
         tempPath = tempPath->nexPoint;
     }
+    printf("Stop prog time = %u\n", clock());
+    printf("dT = %u us\n", ((clock() - currentTime) * 1000000) / CLOCKS_PER_SEC);
     addTrackToImage(imagePath, rootPath);
     //printImage(image, imageH, imageW);
-    //printWave(imageBuff, imageH, imageW);
-
+    free(imageBuff);
+    free(imageBuffCopy);
+    free(imageRow);
     return 0;
 }
 
