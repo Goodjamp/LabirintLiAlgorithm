@@ -1,13 +1,16 @@
 /*
  * Author: Gerasimchyk
- * File:   bmpDescriptions.h
- * Date:   15.07.2019
+ * File:   labyrinthProcessing.h
+ * Date:   8.09.2019
 */
 
 #ifndef _BMP_DESCRIPTIONS_
 #define _BMP_DESCRIPTIONS_
 
 #include <stdint.h>
+#include <stdbool.h>
+
+#include "labyrinthProcessing.h"
 
 #pragma pack(push, 1)
 typedef struct BmpS{
@@ -34,11 +37,20 @@ typedef struct BmpS{
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-    typedef struct {
+typedef struct {
         uint8_t b;
         uint8_t g;
         uint8_t r;
-    } Color;
+} Color;
 #pragma pack(pop)
+
+void     printImageInfo(const uint8_t *imagePath);
+uint32_t getImageSize(const uint8_t *imagePath);
+uint32_t getImageHeight(const uint8_t *imagePath);
+uint32_t getImageWidth(const uint8_t *imagePath);
+uint32_t getImageOfset(const uint8_t *imagePath);
+uint32_t fileSize(const uint8_t *imagePath);
+bool     isFileExist(const uint8_t *imagePath);
+
 
 #endif

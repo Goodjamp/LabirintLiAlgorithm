@@ -3,26 +3,37 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define OCCUPIED (~((lab_t)0))
-#define FREE     ((lab_t)0)
-#define OPTIMIZE_OCCUPIED 0XEEEEEEEE
+#define OCCUPIED          (~((lab_t)0))
+#define FREE              (OCCUPIED - 1)
+#define OPTIMIZE_OCCUPIED (FREE - 1)
 
 typedef uint32_t lab_t;
+
+typedef struct LabH *LabP;
 
 typedef struct{
     uint32_t x;
     uint32_t y;
-} point2D;
+} Point2D;
 
-typedef struct pathPoint{
-    uint32_t x;
-    uint32_t y;
-    struct pathPoint *nexPoint;
-} pathPoint;
+typedef struct LabPixel{
+    uint8_t b;
+    uint8_t g;
+    uint8_t r;
+} LabPixel;
 
-bool       initWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop);
-pathPoint* findePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, point2D start, point2D stop);
-void       optimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width);
-bool       addPathToTrack(uint32_t *imageBuff,  uint32_t imageH,  uint32_t imageW, point2D position);
+typedef struct Path{
+    uint32_t length;
+    Point2D *path;
+} Path;
+
+typedef bool (*GetPixelCB)(uint32_t x, uint32_t y, LabPixel *labPixel);
+
+LabP  labInit(GetPixelCB getPixelCB);
+bool  labReadImage(LabP lab);
+Path* labGetPath(LabP lab, Point2D startPoint, Point2D stopPoint);
+Path* labPathOptimization(Path* path, uint32_t minDistance, uint32_t deviation);
+void  ladFree(LabP lab);
+void  labPathFree(Path* path);
 
 #endif

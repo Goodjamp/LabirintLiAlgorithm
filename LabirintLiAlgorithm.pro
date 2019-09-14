@@ -5,8 +5,9 @@ CONFIG -= qt
 
 SOURCES += \
     labyrinthProcessing.c \
-    main.c
+    main.c \
+    labyrinthBmpProcessing.c
 
 HEADERS += \
-        bmpDescriptions.h \
-        labyrinthProcessing.h
+        labyrinthProcessing.h \
+        labyrinthBmpProcessing.h
