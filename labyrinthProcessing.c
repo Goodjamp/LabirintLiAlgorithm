@@ -6,9 +6,7 @@
 
 #include "labyrinthProcessing.h"
 
-#define WAVE_SIZE 10000
-
-Path* labFindePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D start, Point2D stop);
+#define WAVE_SIZE 100000
 
 typedef struct LabH {
     uint32_t *imageBuff;
@@ -27,10 +25,66 @@ struct WaveS {
     } pos[WAVE_SIZE];
 };
 
+static Path* labFindePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D start, Point2D stop)
+{
+    uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
+    uint32_t nextDist = image[stop.y][stop.x];
+    uint32_t nextDistPrev;
+    uint32_t pathLength = nextDist + 1;
+
+    if(nextDist == OCCUPIED ||
+       nextDist == OPTIMIZE_OCCUPIED ||
+       nextDist == FREE) {
+        return NULL;
+    }
+    if(start.x == stop.x && start.y == stop.y) {
+        return NULL;
+    }
+    Point2D *rootPoint = (Point2D*)malloc(sizeof(Point2D) * (nextDist + 1));
+    rootPoint[nextDist].x = stop.x;
+    rootPoint[nextDist].y = stop.y;
+    while(true) {
+        if((rootPoint[nextDist].x == start.x && rootPoint[nextDist].y == start.y)
+            || nextDist == 0) {
+            break;
+        }
+        nextDistPrev = nextDist;
+        nextDist--;
+        if((image[rootPoint[nextDistPrev].y - 1][rootPoint[nextDistPrev].x] == nextDist) && (rootPoint[nextDistPrev].y > 0)) {
+            rootPoint[nextDist].x = rootPoint[nextDistPrev].x;
+            rootPoint[nextDist].y = rootPoint[nextDistPrev].y - 1;
+            continue;
+        };
+        /**BOTTOM PIXEL**/
+        if((image[rootPoint[nextDistPrev].y + 1][rootPoint[nextDistPrev].x] == nextDist) && (rootPoint[nextDistPrev].y < (imageH - 1))) {
+            rootPoint[nextDist].x = rootPoint[nextDistPrev].x;
+            rootPoint[nextDist].y = rootPoint[nextDistPrev].y + 1;
+            continue;
+        };
+        /**LEFT PIXEL**/
+        if((image[rootPoint[nextDistPrev].y][rootPoint[nextDistPrev].x - 1] == nextDist) && (rootPoint[nextDistPrev].x > 0)) {
+            rootPoint[nextDist].x = rootPoint[nextDistPrev].x - 1;
+            rootPoint[nextDist].y = rootPoint[nextDistPrev].y;
+            continue;
+        };
+        /**RIGHT PIXEL**/
+        if((image[rootPoint[nextDistPrev].y][rootPoint[nextDistPrev].x + 1] == nextDist) && (rootPoint[nextDistPrev].x < (imageW - 1))) {
+            rootPoint[nextDist].x = rootPoint[nextDistPrev].x + 1;
+            rootPoint[nextDist].y = rootPoint[nextDistPrev].y;
+            continue;
+        };
+        return NULL;
+    }
+    Path *rezPath = (Path*)malloc(sizeof(Path));
+    rezPath->length = pathLength;
+    rezPath->path   = rootPoint;
+    return rezPath;
+}
+
 /*
  Add path to the neares free space
 */
-bool labExtendPathFromPoint(uint32_t *imageBuff,
+static bool labExtendPathFromPoint(uint32_t *imageBuff,
                          uint32_t imageH,
                          uint32_t imageW,
                          Point2D position)
@@ -148,63 +202,7 @@ bool labExtendPathFromPoint(uint32_t *imageBuff,
     return true;
 }
 
-Path* labFindePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D start, Point2D stop)
-{
-    uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
-    uint32_t nextDist = image[stop.y][stop.x];
-    uint32_t nextDistPrev;
-    uint32_t pathLength = nextDist + 1;
-
-    if(nextDist == OCCUPIED ||
-       nextDist == OPTIMIZE_OCCUPIED ||
-       nextDist == FREE) {
-        return NULL;
-    }
-    if(start.x == stop.x && start.y == stop.y) {
-        return NULL;
-    }
-    Point2D *rootPoint = (Point2D*)malloc(sizeof(Point2D) * (nextDist + 1));
-    rootPoint[nextDist].x = stop.x;
-    rootPoint[nextDist].y = stop.y;
-    while(true) {
-        if((rootPoint[nextDist].x == start.x && rootPoint[nextDist].y == start.y)
-            || nextDist == 0) {
-            break;
-        }       
-        nextDistPrev = nextDist;
-        nextDist--;
-        if((image[rootPoint[nextDistPrev].y - 1][rootPoint[nextDistPrev].x] == nextDist) && (rootPoint[nextDistPrev].y > 0)) {
-            rootPoint[nextDist].x = rootPoint[nextDistPrev].x;
-            rootPoint[nextDist].y = rootPoint[nextDistPrev].y - 1;
-            continue;
-        };
-        /**BOTTOM PIXEL**/
-        if((image[rootPoint[nextDistPrev].y + 1][rootPoint[nextDistPrev].x] == nextDist) && (rootPoint[nextDistPrev].y < (imageH - 1))) {
-            rootPoint[nextDist].x = rootPoint[nextDistPrev].x;
-            rootPoint[nextDist].y = rootPoint[nextDistPrev].y + 1;
-            continue;
-        };
-        /**LEFT PIXEL**/
-        if((image[rootPoint[nextDistPrev].y][rootPoint[nextDistPrev].x - 1] == nextDist) && (rootPoint[nextDistPrev].x > 0)) {
-            rootPoint[nextDist].x = rootPoint[nextDistPrev].x - 1;
-            rootPoint[nextDist].y = rootPoint[nextDistPrev].y;
-            continue;
-        };
-        /**RIGHT PIXEL**/
-        if((image[rootPoint[nextDistPrev].y][rootPoint[nextDistPrev].x + 1] == nextDist) && (rootPoint[nextDistPrev].x < (imageW - 1))) {
-            rootPoint[nextDist].x = rootPoint[nextDistPrev].x + 1;
-            rootPoint[nextDist].y = rootPoint[nextDistPrev].y;
-            continue;
-        };
-        return NULL;
-    }
-    Path *rezPath = (Path*)malloc(sizeof(Path));
-    rezPath->length = pathLength;
-    rezPath->path   = rootPoint;
-    return rezPath;
-}
-
-bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D start, Point2D stop)
+static bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D start, Point2D stop)
 {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     struct WaveS wave, waveTemp;   
@@ -257,7 +255,7 @@ bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D 
     return true;
 }
 
-void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
+static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
 {
     uint32_t (*image)[width] = (uint32_t (*)[])imageBuff;
     uint16_t imageSize = height * width;
@@ -499,7 +497,7 @@ static bool labIsInRange(Point2D* path, uint32_t size, double quadDL)
     return true;
 }
 
-Path* labPathOptimization(Path* path, uint32_t minDistance, uint32_t deviation)
+Path* labPathOptimization(Path* path, uint32_t minSegmentSize, uint32_t deviation)
 {
     if(path == NULL) {
         return NULL;
@@ -509,14 +507,14 @@ Path* labPathOptimization(Path* path, uint32_t minDistance, uint32_t deviation)
     uint32_t oldPCnt = 0;
     uint32_t newPCnt = 0;
     uint32_t size;
-    double quadDist = deviation * deviation;
+    double squaredDeviation = deviation * deviation;
     pathPoint[newPCnt++] = path->path[oldPCnt];
-    minDistance++;
+    minSegmentSize++;
     while((oldPCnt + 1) < path->length) {
-        size = ((path->length - (oldPCnt + 1)) >= minDistance) ?
-                    (minDistance):
+        size = ((path->length - (oldPCnt + 1)) >= minSegmentSize) ?
+                    (minSegmentSize):
                     (path->length - (oldPCnt + 1));
-        while(labIsInRange(&path->path[oldPCnt], size, quadDist)) {
+        while(labIsInRange(&path->path[oldPCnt], size, squaredDeviation)) {
             size++;
             if((oldPCnt + size) > path->length) {
                 break;

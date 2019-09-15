@@ -131,7 +131,7 @@ int main(int argIn, char **argV)
     imageH = getImageHeight(imagePath);
     imageW = getImageWidth(imagePath);
     uint32_t imageOfset = getImageOfset(imagePath);
-    imageBuff = (uint32_t*)malloc(imageH * imageW * sizeof(LabPixel));
+    imageBuff = (LabPixel*)malloc(imageH * imageW * sizeof(LabPixel));
     //uint32_t *imageBuffCopy = (uint32_t*)malloc(imageH * imageW * sizeof(uint32_t));
     //memset(imageBuff, 0, imageH * imageW * sizeof(uint32_t));
     LabPixel (*image)[imageW] = (LabPixel (*)[imageW])imageBuff;
@@ -154,18 +154,15 @@ int main(int argIn, char **argV)
         }
     }
     free(imageRow);
-    printf("Begin Lab\n");
     LabP lab = labInit(getPixel);
     if(lab == NULL) {
         printf("Cant create labP \n");
         return -1;
     }
-    printf("Begin read image\n");
     if(!labReadImage(lab)) {
         printf("Cant reade image \n");
         return -1;
     }
-    printf("Begin get path\n");
     Path* path = labGetPath(lab, startPoint, stopPoint);
     if(path == NULL) {
         printf("Can't finde path \n");
