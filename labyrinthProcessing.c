@@ -40,6 +40,12 @@ bool labExtendPathFromPoint(uint32_t *imageBuff,
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])copyImage;
     uint32_t (*imageBuffP)[imageW] = (uint32_t (*)[imageW])imageBuff;
     struct WaveS wave, waveTemp;
+    if(image[position.y][position.x] == OCCUPIED) {
+        return false;
+    }
+    if(image[position.y][position.x] == FREE) {
+        return true;
+    }
     image[position.y][position.x] = 0;
     wave.cnt = 1;
     wave.pos[0].x = position.x;
@@ -150,7 +156,8 @@ Path* labFindePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2
     uint32_t pathLength = nextDist + 1;
 
     if(nextDist == OCCUPIED ||
-       nextDist == OPTIMIZE_OCCUPIED) {
+       nextDist == OPTIMIZE_OCCUPIED ||
+       nextDist == FREE) {
         return NULL;
     }
     if(start.x == stop.x && start.y == stop.y) {
@@ -200,7 +207,10 @@ Path* labFindePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2
 bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D start, Point2D stop)
 {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
-    struct WaveS wave, waveTemp;
+    struct WaveS wave, waveTemp;   
+    if(image[start.y][start.x] != FREE) {
+        return NULL;
+    }
     image[start.y][start.x] = 0;
     wave.cnt = 1;
     wave.pos[0].x = start.x;
@@ -421,6 +431,7 @@ LabP labInit(GetPixelCB getPixelCB)
     lab->imageH    = 0;
     lab->isInit    = false;
     lab->imageBuff = NULL;
+    lab->persistentImageBuff = NULL;
     lab->getPixel  = getPixelCB;
     return lab;
 }
@@ -472,14 +483,11 @@ static inline double labPointToLineDist(Point2D point, double A, double B, doubl
 
     double x = (B * (       B * point.x - A * point.y) - A * C) / (A * A + B * B);
     double y = (A * (-1.0 * B * point.x + A * point.y) - B * C) / (A * A + B * B);
-   // printf("x = %5.2lf, y = %5.2lf dist = %5.2lf\n", x, y, (point.x - x) * (point.x - x) + (point.y - y) * (point.y - y));
     return (point.x - x) * (point.x - x) + (point.y - y) * (point.y - y);
 }
 
 static bool labIsInRange(Point2D* path, uint32_t size, double quadDL)
 {
-    //printf("path[size - 1].x = %u \n", path[size - 1].x);
-    //printf("path[size - 1].y = %u \n", path[size - 1].y);
     double lA = 1.0 * ((double)path[size - 1].y - (double)path[0].y);
     double lB = -1.0 * ((double)path[size - 1].x - (double)path[0].x);
     double lC = -1.0 * lB * (double)path[0].y - lA * (double)path[0].x;

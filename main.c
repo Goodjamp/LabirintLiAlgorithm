@@ -106,7 +106,7 @@ void printWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW) {
     }
 }
 
-LabPixel *imageBuff;
+volatile LabPixel *imageBuff;
 volatile uint32_t imageH;
 volatile uint32_t imageW;
 
@@ -154,20 +154,28 @@ int main(int argIn, char **argV)
         }
     }
     free(imageRow);
+    printf("Begin Lab\n");
     LabP lab = labInit(getPixel);
     if(lab == NULL) {
         printf("Cant create labP \n");
         return -1;
     }
+    printf("Begin read image\n");
     if(!labReadImage(lab)) {
         printf("Cant reade image \n");
         return -1;
     }
+    printf("Begin get path\n");
     Path* path = labGetPath(lab, startPoint, stopPoint);
     if(path == NULL) {
         printf("Can't finde path \n");
+        return 0;
     }
     Path* pathOptimaise = labPathOptimization(path, 10, 6);
+    if(pathOptimaise == NULL) {
+        printf("Can't optimaixe path\n");
+        return 0;
+    }
     addTrackToImage(imagePath, pathOptimaise);
 
     return 0;
