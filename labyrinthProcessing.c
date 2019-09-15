@@ -258,14 +258,11 @@ static bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, P
 static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
 {
     uint32_t (*image)[width] = (uint32_t (*)[])imageBuff;
-    uint16_t imageSize = height * width;
-    struct {
-        uint32_t x;
-        uint32_t y;
-    } busyPixelList1[imageSize],
-      busyPixelList2[imageSize],
-      *currentList,
-      *newList;
+    uint32_t imageSize = height * width;
+
+    Point2D *busyPixelList1 = (Point2D*)malloc(sizeof(Point2D) * imageSize);
+    Point2D *busyPixelList2 = (Point2D*)malloc(sizeof(Point2D) * imageSize);
+    Point2D *currentList, *newList;
     currentList = busyPixelList2;
     uint32_t busyCnt = 0;
     /*Get busy pixels list*/
@@ -351,6 +348,8 @@ static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t widt
         }
         busyCnt = tempCnt;
     }
+    free(busyPixelList1);
+    free(busyPixelList2);
 }
 
 #include "stdio.h"

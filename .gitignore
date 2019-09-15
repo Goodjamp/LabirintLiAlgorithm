@@ -9,6 +9,8 @@
 *.ebTemp
 *_build_log.html
 *.depend
+*.exe
+*.stackdump
 
 release
 debug

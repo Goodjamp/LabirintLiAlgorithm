@@ -8,9 +8,9 @@
 #include "labyrinthBmpProcessing.h"
 #include "labyrinthProcessing.h"
 
-const uint8_t  myImage[] = "C:\\image\\lab_8.bmp";
-Point2D startPoint = {.x = 17,  .y = 17};
-Point2D stopPoint  = {.x = 367, .y = 370};
+const uint8_t  myImage[] = "C:\\image\\lab_9.bmp";
+Point2D startPoint = {.x = 27,  .y = 27};
+Point2D stopPoint  = {.x = 973, .y = 29};
 //point2D startPoint = {.x = 116,  .y = 84};
 //point2D stopPoint  = {.x = 3, .y = 497};
 /*
@@ -154,6 +154,9 @@ int main(int argIn, char **argV)
         }
     }
     free(imageRow);
+
+    /*Labirynt processing*/
+
     LabP lab = labInit(getPixel);
     if(lab == NULL) {
         printf("Cant create labP \n");
@@ -168,7 +171,8 @@ int main(int argIn, char **argV)
         printf("Can't finde path \n");
         return 0;
     }
-    Path* pathOptimaise = labPathOptimization(path, 10, 6);
+    //addTrackToImage(imagePath, path);
+    Path* pathOptimaise = labPathOptimization(path, 10, 1);
     if(pathOptimaise == NULL) {
         printf("Can't optimaixe path\n");
         return 0;
