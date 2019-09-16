@@ -84,22 +84,22 @@ static Path* labFindePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW,
 /*
  Add path to the neares free space
 */
-static bool labExtendPathFromPoint(uint32_t *imageBuff,
-                         uint32_t imageH,
-                         uint32_t imageW,
-                         Point2D position)
+static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32_t imageW, Point2D position)
 {
     uint32_t *copyImage = (uint32_t*)malloc(imageH * imageW * sizeof(uint32_t));
-    memcpy((uint8_t*)copyImage, (uint8_t*)imageBuff, imageH * imageW * sizeof(uint32_t));
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])copyImage;
     uint32_t (*imageBuffP)[imageW] = (uint32_t (*)[imageW])imageBuff;
     struct WaveS wave, waveTemp;
+    if(imageH <= position.y || imageW <= position.x) {
+        return false;
+    }
     if(image[position.y][position.x] == OCCUPIED) {
         return false;
     }
     if(image[position.y][position.x] == FREE) {
         return true;
     }
+    memcpy((uint8_t*)copyImage, (uint8_t*)imageBuff, imageH * imageW * sizeof(uint32_t));
     image[position.y][position.x] = 0;
     wave.cnt = 1;
     wave.pos[0].x = position.x;
@@ -206,6 +206,12 @@ static bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, P
 {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     struct WaveS wave, waveTemp;   
+    if(imageH <= start.y || imageW <= start.x) {
+        return NULL;
+    }
+    if(imageH <= stop.y || imageW <= stop.x) {
+        return NULL;
+    }
     if(image[start.y][start.x] != FREE) {
         return NULL;
     }
@@ -351,7 +357,7 @@ static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t widt
     free(busyPixelList1);
     free(busyPixelList2);
 }
-
+/*
 #include "stdio.h"
 void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
 {
@@ -373,6 +379,7 @@ void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
         printf("\n");
     }
 }
+*/
 
 bool labReadImage(LabP lab)
 {
@@ -394,7 +401,7 @@ bool labReadImage(LabP lab)
         imageH++;
     }
     uint32_t *imageBuff = (uint32_t*)malloc(sizeof(uint32_t) * imageH * imageW);
-    uint32_t (*imageArray)[imageW] = (uint32_t (*)[])imageBuff;
+    uint32_t (*image)[imageW] = (uint32_t (*)[])imageBuff;
     for(uint32_t k = 0; k < imageH; k++) {
         for(uint32_t i = 0; i < imageW; i++) {
             if(!lab->getPixel(i, k, &labPixel)) {
@@ -405,11 +412,19 @@ bool labReadImage(LabP lab)
             labPixel.g = 0xFF - labPixel.g;
             labPixel.b = 0xFF - labPixel.b;
             if((labPixel.r > 0) || (labPixel.g > 0) || (labPixel.b > 0)) {
-                imageArray[k][i] = OCCUPIED;
+                image[k][i] = OCCUPIED;
             } else {
-                imageArray[k][i] = FREE;
+                image[k][i] = FREE;
             }
         }
+    }
+    for(uint32_t k = 0; k < imageW; k++) {
+        image[0][k] = OCCUPIED;
+        image[imageH - 1][k] = OCCUPIED;
+    }
+    for(uint32_t k = 0; k < imageH; k++) {
+        image[k][0] = OCCUPIED;
+        image[k][imageW - 1] = OCCUPIED;
     }
     lab->imageH    = imageH;
     lab->imageW    = imageW;
