@@ -93,10 +93,10 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
     if(imageH <= position.y || imageW <= position.x) {
         return false;
     }
-    if(image[position.y][position.x] == OCCUPIED) {
+    if(imageBuffP[position.y][position.x] == OCCUPIED) {
         return false;
     }
-    if(image[position.y][position.x] == FREE) {
+    if(imageBuffP[position.y][position.x] == FREE) {
         return true;
     }
     memcpy((uint8_t*)copyImage, (uint8_t*)imageBuff, imageH * imageW * sizeof(uint32_t));
@@ -179,6 +179,8 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
         }
     }
     if(position.x == rezX && position.y == rezY) {
+        imageBuffP[position.y][position.x] = FREE;
+        free(copyImage);
         return true;
     }
     Path *path = labFindePath(copyImage,
@@ -357,29 +359,28 @@ static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t widt
     free(busyPixelList1);
     free(busyPixelList2);
 }
-/*
+
 #include "stdio.h"
-void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
+void printImagePart(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, uint32_t x, uint32_t y)
 {
     printf("PRINT IMAGE \n");
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     printf(" ");
-    for(uint32_t k = 0; k < imageH; k++) {
-        for(uint32_t i = 0; i < imageW; i++) {
+    for(uint32_t k = y; k < imageH; k++) {
+        for(uint32_t i = x; i < imageW; i++) {
             if(image[k][i] == OCCUPIED) {
                 printf("%s", "#");
             } else if (image[k][i] == OPTIMIZE_OCCUPIED) {
                 printf("%s", ".");
-            } else if (image[k][i] == '.') {
-                printf("%s", ".");
-            } else {
+            } else if (image[k][i] == FREE) {
                 printf("%s", " ");
+            } else {
+                printf("%s", "0");
             }
         }
         printf("\n");
     }
 }
-*/
 
 bool labReadImage(LabP lab)
 {
@@ -432,6 +433,7 @@ bool labReadImage(LabP lab)
     lab->imageBuff = imageBuff;
     lab->persistentImageBuff = (uint32_t*)malloc(sizeof(uint32_t) * imageH * imageW);
     labOptimazeImage(imageBuff, imageH, imageW);
+    //printImagePart(imageBuff, imageH, imageW, 572, 787);
     memcpy((uint8_t*)lab->persistentImageBuff, (uint8_t*)lab->imageBuff, sizeof(uint32_t) * imageH * imageW);
     return true;
 }

@@ -8,12 +8,12 @@
 #include "labyrinthBmpProcessing.h"
 #include "labyrinthProcessing.h"
 
-#define MIN_SEGMENT_SIZE  20
-#define DEVIATION         10
+#define MIN_SEGMENT_SIZE  10
+#define DEVIATION         20
 
-const uint8_t  myImage[] = "C:\\image\\lab_9.bmp";
-Point2D startPoint = {.x = 7,  .y = 7};
-Point2D stopPoint  = {.x = 1900, .y = 1900};
+const uint8_t  myImage[] = "C:\\image\\lab_11.bmp";
+//Point2D startPoint = {.x = 415,  .y = 31};
+//Point2D stopPoint  = {.x = 837, .y = 737};
 
 uint8_t* creatTrackToImage(const uint8_t *imagePath, Path *path)
 {
@@ -123,27 +123,28 @@ void addTrackToImage(const uint8_t *imagePath, Path *path)
 }
 
 /*
-void printImage(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW)
+void printImagePart(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, uint32_t x, uint32_t y)
 {
     printf("PRINT IMAGE \n");
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     printf(" ");
-    for(uint32_t k = 0; k < imageH; k++) {
-        for(uint32_t i = 0; i < imageW; i++) {
-            if(image[k][i] == 0xFFFFFFFF) {
+    for(uint32_t k = y; k < imageH; k++) {
+        for(uint32_t i = x; i < imageW; i++) {
+            if(image[k][i] == OCCUPIED) {
                 printf("%s", "#");
-            } else if (image[k][i] == 0xEEEEEEEE) {
+            } else if (image[k][i] == OPTIMIZE_OCCUPIED) {
                 printf("%s", ".");
-            } else if (image[k][i] == '.') {
-                printf("%s", ".");
-            } else {
+            } else if (image[k][i] == FREE) {
                 printf("%s", " ");
+            } else {
+                printf("%s", "0");
             }
         }
         printf("\n");
     }
 }
 */
+
 void printWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW) {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     for(uint32_t k = 0; k < imageH; k++) {
@@ -169,17 +170,106 @@ bool getPixel(uint32_t x, uint32_t y, LabPixel *labPixel)
     return true;
 }
 
+int32_t strToUint(uint8_t *str) {
+    int32_t rez = 0;
+    while(*str) {
+        if(*str < '0' && *str > '9' ) {
+            return -1;
+        }
+        rez = rez * 10 + ((*str++) - '0');
+    }
+    return rez;
+}
+
 int main(int argIn, char **argV)
 {  
     FILE *imageF;
-    const uint8_t *imagePath =  myImage; //argV[1];
-    printf("image path: %s \n", imagePath);
-    if(!isFileExist(imagePath)) {
+   // const uint8_t *imagePath =  myImage; //argV[1];
+    uint8_t *filePath;
+    uint32_t k = 0;
+    Point2D startPoint;
+    Point2D stopPoint;
+    uint32_t optMinSize;
+    uint32_t optDeviation;
+    printf(" argIn %u\n", argIn);
+    while(++k < argIn) {
+        if(argV[k][0] != '-') {
+            printf("Error flags \n");
+            return 0;
+        }
+        switch(argV[k][1]) {
+            case 'f': // path to file
+                k++;
+                filePath = malloc(strlen(argV[k]) + 1);
+                strcpy(filePath, argV[k]);
+                printf("startPoint = %s \n", filePath);
+                continue;
+            case 'b':{ // start point
+                uint32_t *coord;
+                switch(argV[k][2]) {
+                    case 'x':
+                        coord = &startPoint.x;
+                        break;
+                    case 'y':
+                        coord = &startPoint.y;
+                        break;
+                    default:
+                        return -1;
+                }
+                k++;
+
+                if((*coord = strToUint(argV[k])) < 0) {
+                    printf("ERROR \n");
+                    return -1;
+                }
+                printf("startPoint = %u \n", *coord);
+                continue;
+            }
+            case 'e':{ // stop point
+            uint32_t *coord;
+            switch(argV[k][2]) {
+                case 'x':
+                    coord = &stopPoint.x;
+                    break;
+                case 'y':
+                    coord = &stopPoint.y;
+                        break;
+                default:
+                    return -1;
+                }
+                k++;
+
+                if((*coord = strToUint(argV[k])) < 0) {
+                    printf("ERROR \n");
+                    return -1;
+                }
+                printf("stopPoint = %u \n", *coord);
+                continue;
+            }
+            case 's':  // minimus size of optimization path
+                k++;
+                if((optMinSize = strToUint(argV[k])) < 0) {
+                    return -1;
+                }
+                printf("optMinSize = %u \n", optMinSize);
+                continue;
+            case 'd': // optimization deviation
+                k++;
+                if((optDeviation = strToUint(argV[k])) < 0) {
+                    return -1;
+                }
+                printf("optDeviation = %u \n", optDeviation);
+                continue;
+        }
+    }
+    printf("image path: %s \n", filePath);
+
+    if(!isFileExist(filePath)) {
         return 0;
     }
-    imageH = getImageHeight(imagePath);
-    imageW = getImageWidth(imagePath);
-    uint32_t imageOfset = getImageOfset(imagePath);
+    imageH = getImageHeight(filePath);
+    imageW = getImageWidth(filePath);
+    uint32_t imageOfset = getImageOfset(filePath);
     imageBuff = (LabPixel*)malloc(imageH * imageW * sizeof(LabPixel));
     //uint32_t *imageBuffCopy = (uint32_t*)malloc(imageH * imageW * sizeof(uint32_t));
     //memset(imageBuff, 0, imageH * imageW * sizeof(uint32_t));
@@ -193,7 +283,7 @@ int main(int argIn, char **argV)
     printf("imageW = %d \n", imageW);
 
     /*Read image*/
-    imageF = fopen(imagePath, "rb+");
+    imageF = fopen(filePath, "rb+");
     fseek(imageF, imageOfset, SEEK_SET);
     for(uint32_t k = imageH; k > 0; k--) {
         LabPixel *color = (LabPixel*)imageRow;
@@ -220,9 +310,9 @@ int main(int argIn, char **argV)
         printf("Can't finde path \n");
         return 0;
     }
-    uint8_t *newImage = creatTrackToImage(imagePath, path);
+    uint8_t *newImage = creatTrackToImage(filePath, path);
     printf("Not optimaze path sie = %u\n", path->length);
-    Path* pathOptimaise = labPathOptimization(path, MIN_SEGMENT_SIZE, DEVIATION);
+    Path* pathOptimaise = labPathOptimization(path, optMinSize, optDeviation);
     if(pathOptimaise == NULL) {
         printf("Can't optimaixe path\n");
         return 0;
