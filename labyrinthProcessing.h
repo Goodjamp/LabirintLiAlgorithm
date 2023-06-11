@@ -1,39 +1,41 @@
 #ifndef _LABYRINTH_WAVE_H_
 #define _LABYRINTH_WAVE_H_
+
 #include <stdint.h>
 #include <stdbool.h>
 
-#define OCCUPIED          (~((lab_t)0))
-#define FREE              (OCCUPIED - 1)
-#define OPTIMIZE_OCCUPIED (FREE - 1)
+#define OCCUPIED             (~((uint32_t)0))
+#define FREE                 (OCCUPIED - 1)
+#define OPTIMIZE_OCCUPIED    (FREE - 1)
 
-typedef uint32_t lab_t;
+typedef struct LabyrinthLabH *LabyrinthLabP;
 
-typedef struct LabH *LabP;
-
-typedef struct{
+typedef struct {
     uint32_t x;
     uint32_t y;
-} Point2D;
+} LabyrinthPixelCoord;
 
-typedef struct LabPixel{
+typedef struct LabyrinthPixelColor {
     uint8_t b;
     uint8_t g;
     uint8_t r;
-} LabPixel;
+} LabyrinthPixelColor;
 
-typedef struct Path{
+typedef struct LabyrinthPath {
     uint32_t length;
-    Point2D *path;
-} Path;
+    LabyrinthPixelCoord *path;
+} LabyrinthPath;
 
-typedef bool (*GetPixelCB)(uint32_t x, uint32_t y, LabPixel *labPixel);
+typedef bool (*LabyrinthGetPixelCB)(uint32_t x, uint32_t y,
+                                    LabyrinthPixelColor *LabyrinthPixelColor);
 
-LabP  labInit(GetPixelCB getPixelCB);
-bool  labReadImage(LabP lab);
-Path* labGetPath(LabP lab, Point2D startPoint, Point2D stopPoint);
-Path* labPathOptimization(Path* path, uint32_t minDistance, uint32_t deviation);
-void  ladFree(LabP lab);
-void  labPathFree(Path* path);
+LabyrinthLabP labyrinthInit(LabyrinthGetPixelCB getPixelCB);
+bool labyrinthReadImage(LabyrinthLabP lab);
+LabyrinthPath* labyrinthGetPath(LabyrinthLabP lab, LabyrinthPixelCoord startPoint,
+                                LabyrinthPixelCoord stopPoint);
+LabyrinthPath* labyrinthSmoothPath(LabyrinthPath* path, uint32_t minDistance,
+                                         uint32_t deviation);
+void labyrinthFree(LabyrinthLabP lab);
+void labyrinthPathFree(LabyrinthPath* path);
 
 #endif

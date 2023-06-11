@@ -3,18 +3,19 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "labyrinthProcessing.h"
 
 #define WAVE_SIZE 100000
 
-typedef struct LabH {
+typedef struct LabyrinthLabH {
     uint32_t *imageBuff;
     uint32_t *persistentImageBuff;
     uint32_t imageH;
     uint32_t imageW;
-    bool     isInit;
-    GetPixelCB getPixel;
+    bool isInit;
+    LabyrinthGetPixelCB getPixel;
 } LabH_;
 
 struct WaveS {
@@ -25,78 +26,100 @@ struct WaveS {
     } pos[WAVE_SIZE];
 };
 
-static Path* labFindePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D start, Point2D stop)
+static void printImagePart(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, uint32_t x, uint32_t y)
+{
+    printf("PRINT IMAGE \n");
+    uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
+    printf(" ");
+    for (uint32_t k = y; k < imageH; k++) {
+        for (uint32_t i = x; i < imageW; i++) {
+            if (image[k][i] == OCCUPIED) {
+                printf("%s", "#");
+            } else if (image[k][i] == OPTIMIZE_OCCUPIED) {
+                printf("%s", ".");
+            } else if (image[k][i] == FREE) {
+                printf("%s", " ");
+            } else {
+                printf("%s", "0");
+            }
+        }
+        printf("\n");
+    }
+}
+
+static LabyrinthPath* labFindePath(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, LabyrinthPixelCoord start, LabyrinthPixelCoord stop)
 {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
     uint32_t nextDist = image[stop.y][stop.x];
     uint32_t nextDistPrev;
     uint32_t pathLength = nextDist + 1;
 
-    if(nextDist == OCCUPIED ||
-       nextDist == OPTIMIZE_OCCUPIED ||
-       nextDist == FREE) {
+    if (nextDist == OCCUPIED ||
+        nextDist == OPTIMIZE_OCCUPIED ||
+        nextDist == FREE) {
         return NULL;
     }
-    if(start.x == stop.x && start.y == stop.y) {
+    if (start.x == stop.x && start.y == stop.y) {
         return NULL;
     }
-    Point2D *rootPoint = (Point2D*)malloc(sizeof(Point2D) * (nextDist + 1));
+    LabyrinthPixelCoord *rootPoint = (LabyrinthPixelCoord*)malloc(sizeof(LabyrinthPixelCoord) * (nextDist + 1));
     rootPoint[nextDist].x = stop.x;
     rootPoint[nextDist].y = stop.y;
-    while(true) {
-        if((rootPoint[nextDist].x == start.x && rootPoint[nextDist].y == start.y)
+    while (true) {
+        if ((rootPoint[nextDist].x == start.x && rootPoint[nextDist].y == start.y)
             || nextDist == 0) {
             break;
         }
         nextDistPrev = nextDist;
         nextDist--;
-        if((image[rootPoint[nextDistPrev].y - 1][rootPoint[nextDistPrev].x] == nextDist) && (rootPoint[nextDistPrev].y > 0)) {
+        if ((image[rootPoint[nextDistPrev].y - 1][rootPoint[nextDistPrev].x] == nextDist) && (rootPoint[nextDistPrev].y > 0)) {
             rootPoint[nextDist].x = rootPoint[nextDistPrev].x;
             rootPoint[nextDist].y = rootPoint[nextDistPrev].y - 1;
             continue;
         };
         /**BOTTOM PIXEL**/
-        if((image[rootPoint[nextDistPrev].y + 1][rootPoint[nextDistPrev].x] == nextDist) && (rootPoint[nextDistPrev].y < (imageH - 1))) {
+        if ((image[rootPoint[nextDistPrev].y + 1][rootPoint[nextDistPrev].x] == nextDist) && (rootPoint[nextDistPrev].y < (imageH - 1))) {
             rootPoint[nextDist].x = rootPoint[nextDistPrev].x;
             rootPoint[nextDist].y = rootPoint[nextDistPrev].y + 1;
             continue;
         };
         /**LEFT PIXEL**/
-        if((image[rootPoint[nextDistPrev].y][rootPoint[nextDistPrev].x - 1] == nextDist) && (rootPoint[nextDistPrev].x > 0)) {
+        if ((image[rootPoint[nextDistPrev].y][rootPoint[nextDistPrev].x - 1] == nextDist) && (rootPoint[nextDistPrev].x > 0)) {
             rootPoint[nextDist].x = rootPoint[nextDistPrev].x - 1;
             rootPoint[nextDist].y = rootPoint[nextDistPrev].y;
             continue;
         };
         /**RIGHT PIXEL**/
-        if((image[rootPoint[nextDistPrev].y][rootPoint[nextDistPrev].x + 1] == nextDist) && (rootPoint[nextDistPrev].x < (imageW - 1))) {
+        if ((image[rootPoint[nextDistPrev].y][rootPoint[nextDistPrev].x + 1] == nextDist) && (rootPoint[nextDistPrev].x < (imageW - 1))) {
             rootPoint[nextDist].x = rootPoint[nextDistPrev].x + 1;
             rootPoint[nextDist].y = rootPoint[nextDistPrev].y;
             continue;
         };
         return NULL;
     }
-    Path *rezPath = (Path*)malloc(sizeof(Path));
+    LabyrinthPath *rezPath = (LabyrinthPath*)malloc(sizeof(LabyrinthPath));
     rezPath->length = pathLength;
-    rezPath->path   = rootPoint;
+    rezPath->path = rootPoint;
     return rezPath;
 }
 
 /*
- Add path to the neares free space
-*/
-static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32_t imageW, Point2D position)
+ * Add path to the neares free space
+ */
+static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, LabyrinthPixelCoord position)
 {
     uint32_t *copyImage = (uint32_t*)malloc(imageH * imageW * sizeof(uint32_t));
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])copyImage;
     uint32_t (*imageBuffP)[imageW] = (uint32_t (*)[imageW])imageBuff;
     struct WaveS wave, waveTemp;
-    if(imageH <= position.y || imageW <= position.x) {
+
+    if (imageH <= position.y || imageW <= position.x) {
         return false;
     }
-    if(imageBuffP[position.y][position.x] == OCCUPIED) {
+    if (imageBuffP[position.y][position.x] == OCCUPIED) {
         return false;
     }
-    if(imageBuffP[position.y][position.x] == FREE) {
+    if (imageBuffP[position.y][position.x] == FREE) {
         return true;
     }
     memcpy((uint8_t*)copyImage, (uint8_t*)imageBuff, imageH * imageW * sizeof(uint32_t));
@@ -107,13 +130,14 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
     uint32_t rezX = 0,
              rezY = 0;
     bool isContinue = true;
-    while(true) {
+    while (true) {
         waveTemp.cnt = 0;
-        for(uint32_t k = 0; k < wave.cnt; k++) {
+        for (uint32_t k = 0; k < wave.cnt; k++) {
             uint32_t newVal = image[wave.pos[k].y][wave.pos[k].x] + 1;
+
             /**UP PIXEL**/
-            if(wave.pos[k].y > 0) {
-                if(image[wave.pos[k].y - 1][wave.pos[k].x] == OPTIMIZE_OCCUPIED) {
+            if (wave.pos[k].y > 0) {
+                if (image[wave.pos[k].y - 1][wave.pos[k].x] == OPTIMIZE_OCCUPIED) {
                 image[wave.pos[k].y - 1][wave.pos[k].x] = newVal;
                 waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y - 1;
                 waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x;
@@ -127,12 +151,12 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
             };
             /**DOWN PIXEL**/
             if (wave.pos[k].y < (imageH - 1)){
-                if(image[wave.pos[k].y + 1][wave.pos[k].x] == OPTIMIZE_OCCUPIED){
+                if (image[wave.pos[k].y + 1][wave.pos[k].x] == OPTIMIZE_OCCUPIED){
                     image[wave.pos[k].y + 1][wave.pos[k].x] = newVal;
                     waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y + 1;
                     waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x;
                     waveTemp.cnt++;
-                } else if(image[wave.pos[k].y + 1][wave.pos[k].x] == FREE) {
+                } else if (image[wave.pos[k].y + 1][wave.pos[k].x] == FREE) {
                     rezX = wave.pos[k].x;
                     rezY = wave.pos[k].y;
                     isContinue = false;
@@ -140,13 +164,13 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
                 }
             }
             /**LEFT PIXEL**/
-            if(wave.pos[k].x > 0) {
-                if(image[wave.pos[k].y][wave.pos[k].x - 1] == OPTIMIZE_OCCUPIED) {
+            if (wave.pos[k].x > 0) {
+                if (image[wave.pos[k].y][wave.pos[k].x - 1] == OPTIMIZE_OCCUPIED) {
                     image[wave.pos[k].y][wave.pos[k].x - 1] = newVal;
                     waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y;
                     waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x - 1;
                     waveTemp.cnt++;
-                } else if(image[wave.pos[k].y][wave.pos[k].x - 1] == FREE) {
+                } else if (image[wave.pos[k].y][wave.pos[k].x - 1] == FREE) {
                     rezX = wave.pos[k].x;
                     rezY = wave.pos[k].y;
                     isContinue = false;
@@ -154,13 +178,13 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
                 }
             }
             /**RIGHT PIXEL**/
-            if(wave.pos[k].x < (imageW - 1)) {
-                if(image[wave.pos[k].y][wave.pos[k].x + 1] == OPTIMIZE_OCCUPIED) {
+            if (wave.pos[k].x < (imageW - 1)) {
+                if (image[wave.pos[k].y][wave.pos[k].x + 1] == OPTIMIZE_OCCUPIED) {
                     image[wave.pos[k].y][wave.pos[k].x + 1] = newVal;
                     waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y;
                     waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x + 1;
                     waveTemp.cnt++;
-                } else if(image[wave.pos[k].y][wave.pos[k].x + 1] == FREE) {
+                } else if (image[wave.pos[k].y][wave.pos[k].x + 1] == FREE) {
                     rezX = wave.pos[k].x;
                     rezY = wave.pos[k].y;
                     isContinue = false;
@@ -169,7 +193,7 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
                 }
             }
         }
-        if(waveTemp.cnt > 0 && isContinue){
+        if (waveTemp.cnt > 0 && isContinue){
             wave = waveTemp;
         } else if (waveTemp.cnt == 0 && isContinue) {
              free(copyImage);
@@ -178,24 +202,24 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
             break;
         }
     }
-    if(position.x == rezX && position.y == rezY) {
+    if (position.x == rezX && position.y == rezY) {
         imageBuffP[position.y][position.x] = FREE;
         free(copyImage);
         return true;
     }
-    Path *path = labFindePath(copyImage,
-                                   imageH,
-                                   imageW,
-                                   position,
-                                   (Point2D){.x = rezX, rezY});
-    if(path == NULL) {
+    LabyrinthPath *path = labFindePath(copyImage,
+                                       imageH,
+                                       imageW,
+                                       position,
+                                       (LabyrinthPixelCoord){rezX, rezY});
+    if (path == NULL) {
         free(copyImage);
         free(path->path);
         free(path);
         return false;
     }
     /*Set path to start point*/
-    for(uint32_t k = 0; k < path->length; k++){
+    for (uint32_t k = 0; k < path->length; k++){
         imageBuffP[path->path[k].y][path->path[k].x] = FREE;
     }
     free(copyImage);
@@ -204,17 +228,19 @@ static bool labExtendPathFromPoint(uint32_t *imageBuff, uint32_t imageH,  uint32
     return true;
 }
 
-static bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, Point2D start, Point2D stop)
+static bool labyrinthInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW,
+                              LabyrinthPixelCoord start, LabyrinthPixelCoord stop)
 {
     uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
-    struct WaveS wave, waveTemp;   
-    if(imageH <= start.y || imageW <= start.x) {
+    struct WaveS wave, waveTemp;
+
+    if (imageH <= start.y || imageW <= start.x) {
         return NULL;
     }
-    if(imageH <= stop.y || imageW <= stop.x) {
+    if (imageH <= stop.y || imageW <= stop.x) {
         return NULL;
     }
-    if(image[start.y][start.x] != FREE) {
+    if (image[start.y][start.x] != FREE) {
         return NULL;
     }
     image[start.y][start.x] = 0;
@@ -222,33 +248,33 @@ static bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, P
     wave.pos[0].x = start.x;
     wave.pos[0].y = start.y;
 
-    while(true) {
+    while (true) {
         waveTemp.cnt = 0;
-        for(uint32_t k = 0; k < wave.cnt; k++) {
+        for (uint32_t k = 0; k < wave.cnt; k++) {
             uint32_t newVal = image[wave.pos[k].y][wave.pos[k].x] + 1;
             /**UP PIXEL**/
-            if((image[wave.pos[k].y - 1][wave.pos[k].x] == FREE) && (wave.pos[k].y > 0)) {
+            if ((image[wave.pos[k].y - 1][wave.pos[k].x] == FREE) && (wave.pos[k].y > 0)) {
                 image[wave.pos[k].y - 1][wave.pos[k].x] = newVal;
                 waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y - 1;
                 waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x;
                 waveTemp.cnt++;
             };
             /**DOWN PIXEL**/
-            if((image[wave.pos[k].y + 1][wave.pos[k].x] == FREE) && (wave.pos[k].y < (imageH - 1))) {
+            if ((image[wave.pos[k].y + 1][wave.pos[k].x] == FREE) && (wave.pos[k].y < (imageH - 1))) {
                 image[wave.pos[k].y + 1][wave.pos[k].x] = newVal;
                 waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y + 1;
                 waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x;
                 waveTemp.cnt++;
             };
             /**LEFT PIXEL**/
-            if((image[wave.pos[k].y][wave.pos[k].x - 1] == FREE)&& (wave.pos[k].x > 0)) {
+            if ((image[wave.pos[k].y][wave.pos[k].x - 1] == FREE)&& (wave.pos[k].x > 0)) {
                 image[wave.pos[k].y][wave.pos[k].x - 1] = newVal;
                 waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y;
                 waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x - 1;
                 waveTemp.cnt++;
             };
             /**RIGHT PIXEL**/
-            if((image[wave.pos[k].y][wave.pos[k].x + 1] == FREE) && (wave.pos[k].x < (imageW - 1))) {
+            if ((image[wave.pos[k].y][wave.pos[k].x + 1] == FREE) && (wave.pos[k].x < (imageW - 1))) {
                 image[wave.pos[k].y][wave.pos[k].x + 1] = newVal;
                 waveTemp.pos[waveTemp.cnt].y = wave.pos[k].y;
                 waveTemp.pos[waveTemp.cnt].x = wave.pos[k].x + 1;
@@ -256,27 +282,32 @@ static bool labInitWave(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, P
             };
         }
         wave = waveTemp;
-        if(wave.cnt == 0) {
+        if (wave.cnt == 0) {
             break;
         }
     }
     return true;
 }
 
-static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t width)
+/*
+ * Thickening the walls of the labyrinth up to the moment when remain the
+ * pass thickness of one pixel.
+ */
+static void labyrinthImageWallThickening(uint32_t *imageBuff, uint32_t height,
+                                         uint32_t width)
 {
     uint32_t (*image)[width] = (uint32_t (*)[])imageBuff;
     uint32_t imageSize = height * width;
-
-    Point2D *busyPixelList1 = (Point2D*)malloc(sizeof(Point2D) * imageSize);
-    Point2D *busyPixelList2 = (Point2D*)malloc(sizeof(Point2D) * imageSize);
-    Point2D *currentList, *newList;
+    LabyrinthPixelCoord *busyPixelList1 = (LabyrinthPixelCoord*)malloc(sizeof(LabyrinthPixelCoord) * imageSize);
+    LabyrinthPixelCoord *busyPixelList2 = (LabyrinthPixelCoord*)malloc(sizeof(LabyrinthPixelCoord) * imageSize);
+    LabyrinthPixelCoord *currentList, *newList;
     currentList = busyPixelList2;
     uint32_t busyCnt = 0;
+
     /*Get busy pixels list*/
-    for(uint32_t kY = 0; kY < height; kY++) {
-        for(uint32_t kX = 0; kX < width; kX++) {
-            if(image[kY][kX] == FREE) {
+    for (uint32_t kY = 0; kY < height; kY++) {
+        for (uint32_t kX = 0; kX < width; kX++) {
+            if (image[kY][kX] == FREE) {
                 continue;
             }
             busyPixelList1[busyCnt].x = kX;
@@ -286,23 +317,23 @@ static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t widt
         }
     }
     // increase borders of labirint up to one pixel
-    while(busyCnt) {
+    while (busyCnt) {
         uint32_t tempCnt;
         tempCnt = 0;
-        if(currentList == busyPixelList1) {
+        if (currentList == busyPixelList1) {
             currentList = busyPixelList2;
-            newList     = busyPixelList1;
+            newList = busyPixelList1;
         } else {
             currentList = busyPixelList1;
-            newList     = busyPixelList2;
+            newList = busyPixelList2;
         }
 
-        for(uint32_t k = 0; k < busyCnt; k++) {
+        for (uint32_t k = 0; k < busyCnt; k++) {
 
-            if(currentList[k].y >= 2 &&
+            if (currentList[k].y >= 2 &&
                currentList[k].x >= 1 &&
                currentList[k].x <= (width - 2)) {
-                if(image[currentList[k].y - 1][currentList[k].x] == FREE &&
+                if (image[currentList[k].y - 1][currentList[k].x] == FREE &&
                    image[currentList[k].y - 2][currentList[k].x - 1] == FREE &&
                    image[currentList[k].y - 2][currentList[k].x] == FREE &&
                    image[currentList[k].y - 2][currentList[k].x + 1] == FREE) {
@@ -312,10 +343,10 @@ static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t widt
                     tempCnt++;
                 }
             }
-            if(currentList[k].y <= (height - 3) &&
-               currentList[k].x >= 1            &&
+            if (currentList[k].y <= (height - 3) &&
+               currentList[k].x >= 1 &&
                currentList[k].x <= (width - 2)) {
-                if(image[currentList[k].y + 1][currentList[k].x] == FREE &&
+                if (image[currentList[k].y + 1][currentList[k].x] == FREE &&
                    image[currentList[k].y + 2][currentList[k].x - 1] == FREE &&
                    image[currentList[k].y + 2][currentList[k].x] == FREE &&
                    image[currentList[k].y + 2][currentList[k].x + 1] == FREE) {
@@ -326,10 +357,10 @@ static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t widt
                 }
             }
 
-            if(currentList[k].x >= 2 &&
+            if (currentList[k].x >= 2 &&
                currentList[k].y >= 1 &&
                currentList[k].y <= (height - 2)) {
-                if(image[currentList[k].y][currentList[k].x - 1] == FREE &&
+                if (image[currentList[k].y][currentList[k].x - 1] == FREE &&
                    image[currentList[k].y - 1][currentList[k].x - 2] == FREE &&
                    image[currentList[k].y][currentList[k].x - 2] == FREE &&
                    image[currentList[k].y + 1][currentList[k].x - 2] == FREE) {
@@ -340,10 +371,10 @@ static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t widt
                 }
             }
 
-            if(currentList[k].x <= (width - 3) &&
-               currentList[k].y >= 1           &&
+            if (currentList[k].x <= (width - 3) &&
+               currentList[k].y >= 1 &&
                currentList[k].y <= (height - 2)) {
-                if(image[currentList[k].y][currentList[k].x + 1] == FREE &&
+                if (image[currentList[k].y][currentList[k].x + 1] == FREE &&
                    image[currentList[k].y - 1][currentList[k].x + 2] == FREE &&
                    image[currentList[k].y][currentList[k].x + 2] == FREE &&
                    image[currentList[k].y + 1][currentList[k].x + 2] == FREE) {
@@ -360,179 +391,163 @@ static void labOptimazeImage(uint32_t *imageBuff, uint32_t height, uint32_t widt
     free(busyPixelList2);
 }
 
-#include "stdio.h"
-void printImagePart(uint32_t *imageBuff, uint32_t imageH, uint32_t imageW, uint32_t x, uint32_t y)
+bool labyrinthReadImage(LabyrinthLabP lab)
 {
-    printf("PRINT IMAGE \n");
-    uint32_t (*image)[imageW] = (uint32_t (*)[imageW])imageBuff;
-    printf(" ");
-    for(uint32_t k = y; k < imageH; k++) {
-        for(uint32_t i = x; i < imageW; i++) {
-            if(image[k][i] == OCCUPIED) {
-                printf("%s", "#");
-            } else if (image[k][i] == OPTIMIZE_OCCUPIED) {
-                printf("%s", ".");
-            } else if (image[k][i] == FREE) {
-                printf("%s", " ");
-            } else {
-                printf("%s", "0");
-            }
-        }
-        printf("\n");
-    }
-}
-
-bool labReadImage(LabP lab)
-{
-    LabPixel labPixel;
+    LabyrinthPixelColor labPixel;
     uint32_t imageH = 0;
     uint32_t imageW = 0;
-    if(lab->imageBuff != NULL) {
+    if (lab->imageBuff != NULL) {
         free(lab->imageBuff);
     }
-    if(lab->persistentImageBuff != NULL) {
+    if (lab->persistentImageBuff != NULL) {
         free(lab->persistentImageBuff);
     }
     // get image hwidth
-    while(lab->getPixel(imageW, 0, &labPixel)) {
+    while (lab->getPixel(imageW, 0, &labPixel)) {
         imageW++;
     }
     //get image height
-    while(lab->getPixel(0, imageH, &labPixel)) {
+    while (lab->getPixel(0, imageH, &labPixel)) {
         imageH++;
     }
     uint32_t *imageBuff = (uint32_t*)malloc(sizeof(uint32_t) * imageH * imageW);
     uint32_t (*image)[imageW] = (uint32_t (*)[])imageBuff;
-    for(uint32_t k = 0; k < imageH; k++) {
-        for(uint32_t i = 0; i < imageW; i++) {
-            if(!lab->getPixel(i, k, &labPixel)) {
+    for (uint32_t k = 0; k < imageH; k++) {
+        for (uint32_t i = 0; i < imageW; i++) {
+            if (!lab->getPixel(i, k, &labPixel)) {
                 free(imageBuff);
                 return false;
             }
             labPixel.r = 0xFF - labPixel.r;
             labPixel.g = 0xFF - labPixel.g;
             labPixel.b = 0xFF - labPixel.b;
-            if((labPixel.r > 0) || (labPixel.g > 0) || (labPixel.b > 0)) {
+            if ((labPixel.r > 0) || (labPixel.g > 0) || (labPixel.b > 0)) {
                 image[k][i] = OCCUPIED;
             } else {
                 image[k][i] = FREE;
             }
         }
     }
-    for(uint32_t k = 0; k < imageW; k++) {
+    for (uint32_t k = 0; k < imageW; k++) {
         image[0][k] = OCCUPIED;
         image[imageH - 1][k] = OCCUPIED;
     }
-    for(uint32_t k = 0; k < imageH; k++) {
+    for (uint32_t k = 0; k < imageH; k++) {
         image[k][0] = OCCUPIED;
         image[k][imageW - 1] = OCCUPIED;
     }
-    lab->imageH    = imageH;
-    lab->imageW    = imageW;
-    lab->isInit    = true;
+    lab->imageH = imageH;
+    lab->imageW = imageW;
+    lab->isInit = true;
     lab->imageBuff = imageBuff;
     lab->persistentImageBuff = (uint32_t*)malloc(sizeof(uint32_t) * imageH * imageW);
-    labOptimazeImage(imageBuff, imageH, imageW);
-    //printImagePart(imageBuff, imageH, imageW, 572, 787);
+
+    /*
+     * Thickening the walls of the labyrinth up to the moment when remain the pass thickness of one pixel.
+     */
+    labyrinthImageWallThickening(imageBuff, imageH, imageW);
     memcpy((uint8_t*)lab->persistentImageBuff, (uint8_t*)lab->imageBuff, sizeof(uint32_t) * imageH * imageW);
     return true;
 }
 
-LabP labInit(GetPixelCB getPixelCB)
+LabyrinthLabP labyrinthInit(LabyrinthGetPixelCB getPixelCB)
 {
-    LabP lab = (LabP)malloc(sizeof(LabP));
-    lab->imageH    = 0;
-    lab->imageH    = 0;
-    lab->isInit    = false;
+    LabyrinthLabP lab = (LabyrinthLabP)malloc(sizeof(LabyrinthLabP));
+    lab->imageH = 0;
+    lab->imageH = 0;
+    lab->isInit = false;
     lab->imageBuff = NULL;
     lab->persistentImageBuff = NULL;
-    lab->getPixel  = getPixelCB;
+    lab->getPixel = getPixelCB;
     return lab;
 }
 
-Path* labGetPath(LabP lab, Point2D startPoint, Point2D stopPoint)
+LabyrinthPath* labyrinthGetPath(LabyrinthLabP lab, LabyrinthPixelCoord startPoint, LabyrinthPixelCoord stopPoint)
 {
     memcpy((uint8_t*)lab->imageBuff,
            (uint8_t*)lab->persistentImageBuff,
            sizeof(uint32_t) * lab->imageH * lab->imageW);
-    if(!labExtendPathFromPoint(lab->imageBuff, lab->imageH, lab->imageW, startPoint)) {
+    if (!labExtendPathFromPoint(lab->imageBuff, lab->imageH, lab->imageW, startPoint)) {
         return NULL;
     }
-    if(!labExtendPathFromPoint(lab->imageBuff, lab->imageH, lab->imageW, stopPoint)) {
+    if (!labExtendPathFromPoint(lab->imageBuff, lab->imageH, lab->imageW, stopPoint)) {
         return NULL;
     }
-    if(!labInitWave(lab->imageBuff, lab->imageH, lab->imageW, startPoint, (Point2D){0,0})) {
+    if (!labyrinthInitWave(lab->imageBuff, lab->imageH, lab->imageW, startPoint, (LabyrinthPixelCoord){0,0})) {
         return NULL;
     }
+
     return labFindePath(lab->imageBuff, lab->imageH, lab->imageW, startPoint, stopPoint);
 }
 
-void ladFree(LabP lab)
+void labyrinthFree(LabyrinthLabP lab)
 {
-    if(lab == NULL) {
+    if (lab == NULL) {
         return;
     }
-    if(lab->imageBuff != NULL) {
+    if (lab->imageBuff != NULL) {
         free(lab->imageBuff);
     }
-    if(lab->persistentImageBuff != NULL) {
+    if (lab->persistentImageBuff != NULL) {
         free(lab->persistentImageBuff);
     }
     free(lab);
 }
 
-void labPathFree(Path* path)
+void labyrinthPathFree(LabyrinthPath* path)
 {
-    if(path == NULL) {
+    if (path == NULL) {
         return;
     }
-    if(path->path != NULL) {
+    if (path->path != NULL) {
         free(path->path);
     }
     free(path);
 }
 
-static inline double labPointToLineDist(Point2D point, double A, double B, double C)
+static inline double labPointToLineDist(LabyrinthPixelCoord point, double A, double B, double C)
 {
-
-    double x = (B * (       B * point.x - A * point.y) - A * C) / (A * A + B * B);
+    double x = (B * ( B * point.x - A * point.y) - A * C) / (A * A + B * B);
     double y = (A * (-1.0 * B * point.x + A * point.y) - B * C) / (A * A + B * B);
+
     return (point.x - x) * (point.x - x) + (point.y - y) * (point.y - y);
 }
 
-static bool labIsInRange(Point2D* path, uint32_t size, double quadDL)
+static bool labIsInRange(LabyrinthPixelCoord* path, uint32_t size, double quadDL)
 {
     double lA = 1.0 * ((double)path[size - 1].y - (double)path[0].y);
     double lB = -1.0 * ((double)path[size - 1].x - (double)path[0].x);
     double lC = -1.0 * lB * (double)path[0].y - lA * (double)path[0].x;
-    for(uint32_t k = 0; k < size; k++) {
-        if(quadDL < labPointToLineDist(path[k], lA, lB, lC)) {
+
+    for (uint32_t k = 0; k < size; k++) {
+        if (quadDL < labPointToLineDist(path[k], lA, lB, lC)) {
             return false;
         }
     }
     return true;
 }
 
-Path* labPathOptimization(Path* path, uint32_t minSegmentSize, uint32_t deviation)
+LabyrinthPath* labyrinthSmoothPath(LabyrinthPath* path, uint32_t minSegmentSize, uint32_t deviation)
 {
-    if(path == NULL) {
-        return NULL;
-    }
-
-    Point2D *pathPoint = (Point2D*)malloc(path->length * sizeof(Point2D));
+    LabyrinthPixelCoord *pathPoint = (LabyrinthPixelCoord*)malloc(path->length * sizeof(LabyrinthPixelCoord));
     uint32_t oldPCnt = 0;
     uint32_t newPCnt = 0;
     uint32_t size;
     double squaredDeviation = deviation * deviation;
+
+    if (path == NULL) {
+        return NULL;
+    }
+
     pathPoint[newPCnt++] = path->path[oldPCnt];
     minSegmentSize++;
-    while((oldPCnt + 1) < path->length) {
-        size = ((path->length - (oldPCnt + 1)) >= minSegmentSize) ?
-                    (minSegmentSize):
-                    (path->length - (oldPCnt + 1));
-        while(labIsInRange(&path->path[oldPCnt], size, squaredDeviation)) {
+    while ((oldPCnt + 1) < path->length) {
+        size = ((path->length - (oldPCnt + 1)) >= minSegmentSize)
+               ? (minSegmentSize)
+               : (path->length - (oldPCnt + 1));
+        while (labIsInRange(&path->path[oldPCnt], size, squaredDeviation)) {
             size++;
-            if((oldPCnt + size) > path->length) {
+            if ((oldPCnt + size) > path->length) {
                 break;
             }
         }
@@ -541,9 +556,9 @@ Path* labPathOptimization(Path* path, uint32_t minSegmentSize, uint32_t deviatio
         pathPoint[newPCnt++] = path->path[oldPCnt];
     }
 
-    Path* newPath = (Path*)malloc(sizeof(Path));
+    LabyrinthPath* newPath = (LabyrinthPath*)malloc(sizeof(LabyrinthPath));
     newPath->length = newPCnt;
-    newPath->path   = pathPoint;
+    newPath->path = pathPoint;
     return newPath;
 }
 

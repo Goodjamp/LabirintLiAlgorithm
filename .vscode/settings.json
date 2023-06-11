@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "labyrinthprocessing.h": "c",
+        "string.h": "c"
+    }
+}
