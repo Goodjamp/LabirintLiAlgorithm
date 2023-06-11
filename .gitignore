@@ -11,6 +11,7 @@
 *.depend
 *.exe
 *.stackdump
+build
 
 release
 debug
